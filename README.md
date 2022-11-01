@@ -15,7 +15,7 @@ hperf的名称取自Hierarchical Performance Profiling Tools，使用一种层�
 
 hperf的性能数据来源包括底层PMU（核内部分与核外部分），操作系统，上层工作负载（包括benchmark与real-workload），各部分具有代表性的性能数据如下图所示：
 
-![性能数据来源](./img/perf_data_source.png "性能数据来源")
+![性能数据来源](docs/img/perf_data_source.png "性能数据来源")
 
 > 目前工具还是主要关注PMU层面的微架构性能数据，OS层面的性能数据目前主要依靠perf的软件性能事件获得一些OS内核部分的统计数据。
 
@@ -62,13 +62,13 @@ hperf采用了C-S架构，对于待测机器在某一工作负载下的性能剖
 
 > 这里的“客户端”实际上就是一个“控制装置”，起到流程自动化的作用，工作负载的运行和性能剖析任务都是在远程待测机器上。
 
-![性能剖析流程](./img/measurement_flowchart.png "性能剖析流程")
+![性能剖析流程](docs/img/measurement_flowchart.png "性能剖析流程")
 
 ### 设计类
 
 基于面向对象的设计方法，实现hperf的几个关键类及其关系如下图所示：
 
-![设计类](./img/class_design.png "设计类")
+![设计类](docs/img/class_design.png "设计类")
 
 其中的几个模块的功能以及实现方案说明如下：
 
