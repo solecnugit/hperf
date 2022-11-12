@@ -12,7 +12,7 @@ class LocalConnector(Connector):
 
     def run_command(self, command: str) -> str:
         """
-        pass command to SUT to execute and return the output of execution
+        pass command to the system under test to execute and return the output
         :param command: command to be executed
         :return: output
         """
