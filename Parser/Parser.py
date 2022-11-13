@@ -21,13 +21,14 @@ class Parser:
         constructor of `Parser`
         """
         self.parser = ArgumentParser()
+        # a dict stored parsed configurations, initialized by default configurations
         self.configs = {
             "host_type": "local",
             "host_address": "",
             "profiling_time": 5,
             "workload_command": ""
         }
-        # define arguments
+        # define arguments: workload_command
         self.parser.add_argument("workload_command",
                                  help="Any command you can specify in a shell")
         # define options
