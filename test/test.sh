@@ -1,5 +1,6 @@
 #!/bin/bash
 
+TMPDIR="$HOME/tmp/"
 echo "Script Process ID: $$"
 
 # Step 1. start the workload
@@ -16,7 +17,7 @@ nohup 3>"$perf_result" perf stat -e cycles,instructions -C 1,2 -A -x, --log-fd 3
 
 perf_pid=$!
 echo "perf Process ID: $perf_pid"
-
+echo "Please wait for the benchmark end."
 # Step 3. wait for workload finished, then terminate perf process
 wait $workload_pid
 echo "Workload completed."

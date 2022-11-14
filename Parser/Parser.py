@@ -23,10 +23,7 @@ class Parser:
         self.parser = ArgumentParser()
         # a dict stored parsed configurations, initialized by default configurations
         self.configs = {
-            "host_type": "local",
-            "host_address": "",
-            "profiling_time": 5,
-            "workload_command": ""
+            "workload_command": "cd ~/code/hperf/test/ ./mat_mul.c 128"
         }
         # define arguments: workload_command
         self.parser.add_argument("workload_command",
@@ -45,9 +42,10 @@ class Parser:
         self.parser.add_argument("-t", "--time",
                                  type=int,
                                  help="time of profiling (s)")
-        self.parser.add_argument("-v", "--verbose",
+        self.parser.add_argument("--verbose",
                                  help="increase output verbosity",
                                  action="store_true")
+
 
     def parse_args(self, argv: Sequence[str]) -> None:
         """
@@ -65,11 +63,12 @@ class Parser:
         if args.verbose:
             print("Verbosity turned on.")
         if args.remote:
+            if args.local:
+                raise Exception("Cannot set both remote and local!")
             self.configs["host_type"] = "remote"
             self.configs["host_address"] = args.remote
         else:
             self.configs["host_type"] = "local"
-            self.configs["host_address"] = ""
 
     def get_args(self) -> dict:
         """
@@ -96,8 +95,7 @@ class Parser:
         :param connector: an instance of Connector
         :return:
         """
-        return Profiler(connector=connector,
-                        profiling_time=self.configs["profiling_time"])
+        return Profiler(connector=connector)
 
     def get_task(self, connector: Connector) -> Task:
         """

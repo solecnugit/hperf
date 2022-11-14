@@ -1,9 +1,12 @@
 import sys
 from Parser.Parser import Parser
+from Controller.Controller import Controller
 
 
 if __name__ == "__main__":
-    # Initialize Parser.
+    # Initialize Controller, which controls the process of hperf.
+    controller = Controller(sys.argv[1:])
+
     parser = Parser()
 
     # `sys.argv[]` is an array of arguments passed from command line.
