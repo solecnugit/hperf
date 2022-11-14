@@ -1,5 +1,4 @@
 from typing import Sequence
-from Task.Task import Task
 from Parser.Parser import Parser
 from Profiler.Profiler import Profiler
 from Analyzer.Analyzer import Analyzer
@@ -12,15 +11,13 @@ class Controller:
     def __init__(self, argv: Sequence[str]):
         self.configs = None
         self.connector = None
-        self.task = None
-        self.profile = None
+        self.profiler = None
         self.analyzer = None
         self.parser = Parser()
         self.argv = argv
 
     def hperf(self):
         self.parse()
-        self.task()
         self.profile()
 
     def parse(self):
@@ -28,11 +25,9 @@ class Controller:
         self.configs = self.parser.configs
         self.connector = self.get_connector()
 
-    def task(self):
-        pass
-
     def profile(self):
-        pass
+        self.profiler = self.get_profiler(self.connector)
+        self.profiler.profile()
 
     def get_connector(self) -> Connector:
         """
@@ -53,15 +48,6 @@ class Controller:
         :return:
         """
         return Profiler(connector=connector)
-
-    def get_task(self, connector: Connector) -> Task:
-        """
-        instantiate a Task based on the parsed configuration
-        :param connector: an instance of Connector
-        :return:
-        """
-        return Task(connector=connector,
-                    workload_command=self.configs["workload_command"])
 
     def get_analyzer(self, connector: Connector) -> Analyzer:
         """

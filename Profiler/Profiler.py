@@ -1,17 +1,23 @@
 from Connector.Connector import Connector
 
 
+def get_output_cmd() -> str:
+    output_cmd = f'echo "perf result:"\n' \
+                 f"cat $perf_result\n" \
+                 f'echo "perf error:"\n' \
+                 f"cat $perf_error\n"
+    return output_cmd
+
+
 class Profiler:
-    def __init__(self,
-                 connector: Connector,
-                 interval: int = 1000,
-                 interval_count: int = 5):
+    def __init__(self, connector: Connector, configs: dict):
         self.connector = connector
-        self.interval = interval  # sampling interval (ms)
-        self.interval_count = interval_count  # the number of sampling, profiling time (ms) = interval * interval_count
-        self.event_list = "cycles, instructions"
+        self.interval = 1000  # sampling interval (ms)
+        self.interval_count = 5  # the number of sampling, profiling time (ms) = interval * interval_count
+        self.event_list = "cycles,instructions"
         self.perf_output_path = "/tmp/hperf_tmp"  # output of perf command
         self.cpu_list = "1"  # the index of CPUs to be monitored
+        self.pid = configs["pid"]
 
     def runtime_check(self) -> bool:
         """
@@ -35,9 +41,28 @@ class Profiler:
         """
 
     def profile(self):
-        perf_cmd = f"3>{self.perf_output_path} " \
-                   f"perf stat -e {self.event_list} -x, " \
-                   f"-C {self.cpu_list} -A -I {self.interval} " \
-                   f"--interval-count {self.interval_count} --log-fd 3"
+        perf_cmd = self.profile_cmd()
         self.connector.run_command(perf_cmd)
         print("profiling completed.")
+
+    def profile_cmd(self) -> str:
+        perf_cmd = self.pre_perf_dir_cmd()
+        perf_cmd += "nohup 3>$perf_result perf stat -e {0} -C {1} ".format(self.event_list, self.cpu_list)
+        perf_cmd += "-A -x, --log-fd 3 >/dev/null 2>$perf_error &\n"
+        perf_cmd += self.get_wait_cmd()
+        perf_cmd += get_output_cmd()
+        return perf_cmd
+
+    def pre_perf_dir_cmd(self) -> str:
+        pre_dir_cmd = 'TMPDIR="{0}"'.format(self.perf_output_path)
+        pre_dir_cmd += f"perf_result=$(mktemp -t hperf_perf_result.XXXXXX)" \
+                       f"perf_error=$(mktemp -t hperf_perf_error.XXXXXX)"
+        return pre_dir_cmd
+
+    def get_wait_cmd(self) -> str:
+        wait_cmd = f"perf_pid=$!\n" \
+                   f'echo "Please wait for the benchmark end."\n'
+        wait_cmd += "wait {0}\n".format(self.pid)
+        wait_cmd += f'echo "Workload completed."\n' \
+                    f"kill -INT $perf_pid"
+        return wait_cmd

@@ -21,13 +21,8 @@ class Parser:
         constructor of `Parser`
         """
         self.parser = ArgumentParser()
-        # a dict stored parsed configurations, initialized by default configurations
-        self.configs = {
-            "workload_command": "cd ~/code/hperf/test/ ./mat_mul.c 128"
-        }
-        # define arguments: workload_command
-        self.parser.add_argument("workload_command",
-                                 help="Any command you can specify in a shell")
+        # a dict stored parsed configurations
+        self.configs = {}
         # define options
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("-l", "--local",
@@ -36,7 +31,7 @@ class Parser:
         group.add_argument("-r", "--remote",
                            type=str,
                            help="profile on remote host")
-        self.parser.add_argument("-c", "--config",
+        self.parser.add_argument("-C", "--config",
                                  type=str,
                                  help="specify a configuration file with JSON format")
         self.parser.add_argument("-t", "--time",
@@ -45,7 +40,14 @@ class Parser:
         self.parser.add_argument("--verbose",
                                  help="increase output verbosity",
                                  action="store_true")
-
+        self.parser.add_argument("-p",
+                                 "--pid",
+                                 help="pid of the process that hperf profile")
+        self.parser.add_argument("-c",
+                                 "--cpu",
+                                 help="specify core(s) id to profile")
+        self.parser.add_argument("--tmp",
+                                 help="the temporary directory to store results and logs")
 
     def parse_args(self, argv: Sequence[str]) -> None:
         """
@@ -63,8 +65,6 @@ class Parser:
         if args.verbose:
             print("Verbosity turned on.")
         if args.remote:
-            if args.local:
-                raise Exception("Cannot set both remote and local!")
             self.configs["host_type"] = "remote"
             self.configs["host_address"] = args.remote
         else:
