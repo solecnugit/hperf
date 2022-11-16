@@ -13,7 +13,7 @@ echo "Workload Process ID: $workload_pid"
 # Step 2. start profiling
 perf_result=$(mktemp -t hperf_perf_result.XXXXXX)
 perf_error=$(mktemp -t hperf_perf_error.XXXXXX)
-nohup 3>"$perf_result" perf stat -e cycles,instructions -C 1,2 -A -x, --log-fd 3 >/dev/null 2>"$perf_error" &
+nohup 3>"$perf_result" perf stat -e cycles,instructions -C 1 -A -x, --log-fd 3 >/dev/null 2>"$perf_error" &
 
 perf_pid=$!
 echo "perf Process ID: $perf_pid"

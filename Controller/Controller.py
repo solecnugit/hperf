@@ -13,46 +13,46 @@ class Controller:
         self.connector = None
         self.profiler = None
         self.analyzer = None
+        self.configs = {}
         self.parser = Parser()
         self.argv = argv
 
     def hperf(self):
-        self.parse()
-        self.profile()
+        self.__parse()
+        self.__print_profile_cmd()
+        self.__profile()
 
-    def parse(self):
+    def __parse(self):
         self.parser.parse_args(self.argv)
         self.configs = self.parser.configs
-        self.connector = self.get_connector()
+        self.connector = self.__get_connector()
 
-    def profile(self):
-        self.profiler = self.get_profiler(self.connector)
+    def __profile(self):
+        self.profiler = self.__get_profiler()
         self.profiler.profile()
 
-    def get_connector(self) -> Connector:
+    def __print_profile_cmd(self):
+        self.profiler = self.__get_profiler()
+        print(self.profiler.profile_cmd())
+
+    def __get_connector(self) -> Connector:
         """
         instantiate a Connector based on the parsed configuration
         :return: an instance of Connector
         """
         if self.configs["host_type"] == "local":
-            return LocalConnector()
+            return LocalConnector(self.configs)
         else:
-            return RemoteConnector(host_address=self.configs["host_address"])
+            return RemoteConnector(self.configs, host_address=self.configs["host_address"])
 
-    def get_profiler(self, connector: Connector) -> Profiler:
+    def __get_profiler(self) -> Profiler:
         """
         instantiate a Profiler based on the parsed configuration
         a instance of Profiler has a member of a reference to an instance of Connector.
         Profiler will call the methods provided by Connector to execute command on system under test
-        :param connector: an instance of Connector
         :return:
         """
-        return Profiler(connector=connector)
+        return Profiler(self.connector, self.configs)
 
-    def get_analyzer(self, connector: Connector) -> Analyzer:
-        """
-        instantiate an Analyzer based on the parsed configuration
-        :param connector: an instance of Connector
-        :return:
-        """
-        return Analyzer(connector=connector)
+    def __get_analyzer(self) -> Analyzer:
+        pass

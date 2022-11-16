@@ -61,7 +61,6 @@ class Parser:
                 self.configs.update(json.load(f))
         # parse other options and arguments and update config dict
         # config specified in command line will overwrite the config defined in JSON file
-        self.configs["workload_command"] = args.workload_command
         if args.verbose:
             print("Verbosity turned on.")
         if args.remote:
@@ -69,6 +68,10 @@ class Parser:
             self.configs["host_address"] = args.remote
         else:
             self.configs["host_type"] = "local"
+        if args.pid:
+            self.configs["pid"] = args.pid
+        if args.tmp:
+            self.configs["tmp_dir"] = args.tmp
 
     def get_args(self) -> dict:
         """

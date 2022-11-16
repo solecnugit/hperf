@@ -1,28 +1,36 @@
 from Connector.Connector import Connector
 import subprocess
 import os
+import sh
 
 
 class LocalConnector(Connector):
-    def __init__(self) -> None:
+    def __init__(self, configs: dict) -> None:
         """
         constructor of `LocalConnector`, extended from `Connector`
         """
-        super(LocalConnector, self).__init__()
+        super(LocalConnector, self).__init__(configs)
 
-    def run_command(self, command: str) -> str:
-        """
-        pass command to the system under test to execute and return the output
-        :param command: command to be executed
-        :return: output
-        """
-        try:
-            completed_process = subprocess.run(args=command, shell=True, check=True, capture_output=True)
-            output = completed_process.stdout.decode("utf-8")
-            return output
-        except subprocess.CalledProcessError as e:
-            print(e.args)
-        return "done"
+    # def run_command(self, command: str) -> str:
+    #     """
+    #     pass command to the system under test to execute and return the output
+    #     :param command: command to be executed
+    #     :return: output
+    #     """
+    #     try:
+    #         completed_process = subprocess.run(args=command, shell=True, check=True, capture_output=True)
+    #         output = completed_process.stdout.decode("utf-8")
+    #         return output
+    #     except subprocess.CalledProcessError as e:
+    #         print(e.args)
+    #     return "done"
+
+    def run_command(self, command: str):
+        tmp_dir = self.configs["tmp_dir"]
+        tmp_shell = tmp_dir + "/tmp.sh"
+        with open(tmp_shell, 'w') as f:
+            f.write(command)
+        os.system("cd {} && bash tmp.sh".format(tmp_dir))
 
     def get_tmp_file_path(self, tmp_file_path: str) -> str:
         """

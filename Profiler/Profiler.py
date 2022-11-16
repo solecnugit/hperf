@@ -15,7 +15,7 @@ class Profiler:
         self.interval = 1000  # sampling interval (ms)
         self.interval_count = 5  # the number of sampling, profiling time (ms) = interval * interval_count
         self.event_list = "cycles,instructions"
-        self.perf_output_path = "/tmp/hperf_tmp"  # output of perf command
+        self.perf_output_path = configs["tmp_dir"]  # output of perf command
         self.cpu_list = "1"  # the index of CPUs to be monitored
         self.pid = configs["pid"]
 
@@ -54,15 +54,15 @@ class Profiler:
         return perf_cmd
 
     def pre_perf_dir_cmd(self) -> str:
-        pre_dir_cmd = 'TMPDIR="{0}"'.format(self.perf_output_path)
-        pre_dir_cmd += f"perf_result=$(mktemp -t hperf_perf_result.XXXXXX)" \
-                       f"perf_error=$(mktemp -t hperf_perf_error.XXXXXX)"
+        pre_dir_cmd = 'TMPDIR="{0}"\n'.format(self.perf_output_path)
+        pre_dir_cmd += f"perf_result=$(mktemp -t hperf_perf_result.XXXXXX)\n" \
+                       f"perf_error=$(mktemp -t hperf_perf_error.XXXXXX)\n"
         return pre_dir_cmd
 
     def get_wait_cmd(self) -> str:
         wait_cmd = f"perf_pid=$!\n" \
                    f'echo "Please wait for the benchmark end."\n'
-        wait_cmd += "wait {0}\n".format(self.pid)
+        wait_cmd += "tail -f --pid={0} /dev/null\n".format(self.pid)
         wait_cmd += f'echo "Workload completed."\n' \
-                    f"kill -INT $perf_pid"
+                    f"kill -INT $perf_pid\n"
         return wait_cmd
