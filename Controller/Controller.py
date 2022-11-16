@@ -16,15 +16,17 @@ class Controller:
         self.configs = {}
         self.parser = Parser()
         self.argv = argv
-
+    
     def hperf(self):
+        """
+        run hperf.
+        """
         self.__parse()
         self.__print_profile_cmd()
         self.__profile()
 
     def __parse(self):
-        self.parser.parse_args(self.argv)
-        self.configs = self.parser.configs
+        self.configs = self.parser.parse_args(self.argv)
         self.connector = self.__get_connector()
 
     def __profile(self):
@@ -47,10 +49,9 @@ class Controller:
 
     def __get_profiler(self) -> Profiler:
         """
-        instantiate a Profiler based on the parsed configuration
-        a instance of Profiler has a member of a reference to an instance of Connector.
+        instantiate a Profiler which has a reference to an instance of Connector and a reference to an instance of configs.
         Profiler will call the methods provided by Connector to execute command on system under test
-        :return:
+        :return: 
         """
         return Profiler(self.connector, self.configs)
 

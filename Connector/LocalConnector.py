@@ -1,7 +1,5 @@
 from Connector.Connector import Connector
-import subprocess
 import os
-import sh
 
 
 class LocalConnector(Connector):
@@ -46,5 +44,5 @@ class LocalConnector(Connector):
         if os.access(tmp_file_path, os.R_OK):
             return tmp_file_path
         else:
-            raise RuntimeError("Local temporary profiling raw data file does not exist.")
-
+            raise RuntimeError(
+                "Local temporary profiling raw data file does not exist.")
