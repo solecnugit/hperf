@@ -1,3 +1,4 @@
+import logging
 from typing import Sequence
 from Parser.Parser import Parser
 from Profiler.Profiler import Profiler
@@ -16,6 +17,7 @@ class Controller:
         self.configs = {}
         self.parser = Parser()
         self.argv = argv
+        self.logger = logging.getLogger("hperf")
     
     def hperf(self):
         """
