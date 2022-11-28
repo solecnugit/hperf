@@ -1,14 +1,7 @@
 from argparse import ArgumentParser
 from typing import Sequence
-
-from Analyzer.Analyzer import Analyzer
-from Connector.Connector import Connector
-from Connector.LocalConnector import LocalConnector
-from Connector.RemoteConnector import RemoteConnector
 import json
-
-from Profiler.Profiler import Profiler
-from Task.Task import Task
+import os
 
 
 class Parser:
@@ -28,24 +21,30 @@ class Parser:
                            action="store_true")
         group.add_argument("-r", "--remote",
                            type=str,
-                           help="profile on remote host")
+                           help="profile on remote host and specify a connect string.")
         self.parser.add_argument("-C", "--config",
                                  type=str,
-                                 help="specify a configuration file with JSON format")
+                                 help="specify a configuration file with JSON format.")
         self.parser.add_argument("-t", "--time",
                                  type=int,
-                                 help="time of profiling (s)")
+                                 help="time of profiling (s).")
         self.parser.add_argument("--verbose",
                                  help="increase output verbosity",
-                                 action="store_true")
+                                 action="store_true.")
         self.parser.add_argument("-p",
                                  "--pid",
-                                 help="pid of the process that hperf profile")
+                                 help="pid of the process that hperf profile.")
         self.parser.add_argument("-c",
                                  "--cpu",
-                                 help="specify core(s) id to profile")
-        self.parser.add_argument("--tmp",
-                                 help="the temporary directory to store results and logs")
+                                 help="specify core(s) id to profile.")
+        self.parser.add_argument("--tmp_dir ", type=str,
+                                 help="the temporary directory to store results and logs.")
+        self.parser.add_argument("--metrics", type=str,
+                                help="metrics you want to profile 😊.")
+        self.parser.add_argument(
+            "--port", type=int, help="the remote ssh port")
+        self.parser.add_argument(
+            "--nmi", type=bool, help="Whether to turn off NMI watchdog.")
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
@@ -55,7 +54,7 @@ class Parser:
         """
         configs = {}
         args = self.parser.parse_args(argv)
-        # if -c option is specified, load the JSON file and initialize config dict
+        # if -C option is specified, load the JSON file and initialize config dict
         if args.config:
             with open(args.config) as f:
                 configs.update(json.load(f))
@@ -65,12 +64,31 @@ class Parser:
             print("Verbosity turned on.")
         if args.remote:
             configs["host_type"] = "remote"
-            configs["host_address"] = args.remote
+            self.__parse_remote_str__(args.remote, configs)
+            if args.port:
+                configs["port"] = args.port
         else:
             configs["host_type"] = "local"
         if args.pid:
             configs["pid"] = args.pid
-        if args.tmp:
-            configs["tmp_dir"] = args.tmp
+        if args.cpu:
+            configs["cpu_list"] = args.cpu
+        if args.tmp_dir:
+            configs["tmp_dir"] = args.tmp_dir
         return configs
- 
+
+    """
+        Parse string including username, hostname, password or private key file.
+        The string format is 'username@hostname:password(private key file)'
+    """
+
+    def __parse_remote_str__(self, remote_str: str, configs: dict):
+        remote_str.strip()
+        remote_strs = remote_str.split("@", 1)
+        configs["user_name"] = remote_strs[0]
+        remote_strs = remote_strs[1].split(":", 1)
+        configs["host_name"] = remote_strs[0]
+        if os.path.exists(remote_strs[1]):
+            configs["private_key"] = remote_strs[1]
+        else:
+            configs["password"] = remote_strs[1]
