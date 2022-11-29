@@ -28,23 +28,20 @@ class Parser:
         self.parser.add_argument("-t", "--time",
                                  type=int,
                                  help="time of profiling (s).")
-        self.parser.add_argument("--verbose",
-                                 help="increase output verbosity",
-                                 action="store_true.")
         self.parser.add_argument("-p",
                                  "--pid",
                                  help="pid of the process that hperf profile.")
         self.parser.add_argument("-c",
                                  "--cpu",
                                  help="specify core(s) id to profile.")
-        self.parser.add_argument("--tmp_dir ", type=str,
+        self.parser.add_argument("--tmp_dir", type=str,
                                  help="the temporary directory to store results and logs.")
         self.parser.add_argument("--metrics", type=str,
-                                help="metrics you want to profile 😊.")
+                                 help="metrics you want to profile 😊.")
         self.parser.add_argument(
             "--port", type=int, help="the remote ssh port")
         self.parser.add_argument(
-            "--nmi", type=bool, help="Whether to turn off NMI watchdog.")
+            "--nmi", help="Whether to turn off NMI watchdog.", action="store_true")
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
@@ -60,8 +57,6 @@ class Parser:
                 configs.update(json.load(f))
         # parse other options and arguments and update config dict
         # config specified in command line will overwrite the config defined in JSON file
-        if args.verbose:
-            print("Verbosity turned on.")
         if args.remote:
             configs["host_type"] = "remote"
             self.__parse_remote_str__(args.remote, configs)
@@ -75,6 +70,8 @@ class Parser:
             configs["cpu_list"] = args.cpu
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
+        if args.metrics:
+            configs["metrics"] = args.metrics
         return configs
 
     """
