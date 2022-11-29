@@ -7,4 +7,4 @@ class Task:
         self.workload_command = workload_command
 
     def run_workload(self) -> str:
-        return self.connector.run_command(self.workload_command)
+        return self.connector.run_command_with_file(self.workload_command)

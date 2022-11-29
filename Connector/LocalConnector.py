@@ -1,4 +1,5 @@
 from Connector.Connector import Connector
+from datetime import datetime
 import os
 
 
@@ -8,41 +9,40 @@ class LocalConnector(Connector):
         constructor of `LocalConnector`, extended from `Connector`
         """
         super(LocalConnector, self).__init__(configs)
+        self.tmp_dir = self.configs["tmp_dir"]
+        self.file_name = "hperf_{}.sh".format(datetime.now)
+        self.path = self.tmp_dir + "/hperf.sh"
 
-    # def run_command(self, command: str) -> str:
-    #     """
-    #     pass command to the system under test to execute and return the output
-    #     :param command: command to be executed
-    #     :return: output
-    #     """
-    #     try:
-    #         completed_process = subprocess.run(args=command, shell=True, check=True, capture_output=True)
-    #         output = completed_process.stdout.decode("utf-8")
-    #         return output
-    #     except subprocess.CalledProcessError as e:
-    #         print(e.args)
-    #     return "done"
+    def run_command_with_file(self, command: str):
+        self.__pre_bash_file__(command)
+        os.system("cd {} && bash bash.sh".format(self.tmp_dir))
 
-    def run_command(self, command: str):
-        tmp_dir = self.configs["tmp_dir"]
-        tmp_shell = tmp_dir + "/tmp.sh"
-        with open(tmp_shell, 'w') as f:
+    def get_result(self) -> str:
+        result_lines = ""
+        result_path = ""
+        with open(result_path, 'r') as f:
+            result_lines = f.readlines()
+        result = ""
+        for line in result_lines:
+            result += line
+        return result
+
+    def get_err(self) -> str:
+        raise NotImplemented("Undone!")
+
+    def clear(self):
+        pass
+
+    """
+        Undone! Just return Icelacke.
+    """
+
+    def get_cpu_architecture(self) -> str:
+        return "Icelake"
+
+    def runtime_check(self) -> bool:
+        raise NotImplemented("Undone!")
+
+    def __pre_bash_file__(self, command: str):
+        with open(self.path, 'w') as f:
             f.write(command)
-        os.system("cd {} && bash tmp.sh".format(tmp_dir))
-
-    def get_tmp_file_path(self, tmp_file_path: str) -> str:
-        """
-        For the implementation of LocalConnector, 
-        it will check the temporary file on local host, which records the output of perf,
-        If the file exists, return the same path (since Analyzer is able to access to the file);
-        else it will raise an exception.
-        For the implementation of RemoteConnector,
-        it will check the temporary file on remote host.
-        If the file exists, it will copy the file to this system through SSH connection and return the path of the copied file;
-        else it will also raise an exception.
-        """
-        if os.access(tmp_file_path, os.R_OK):
-            return tmp_file_path
-        else:
-            raise RuntimeError(
-                "Local temporary profiling raw data file does not exist.")
