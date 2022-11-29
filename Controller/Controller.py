@@ -20,42 +20,46 @@ class Controller:
         self.logger = logging.getLogger("hperf")
     
     def hperf(self):
-        """
-        run hperf.
-        """
-        self.__parse()
-        self.__print_profile_cmd()
-        self.__profile()
+        self.__parse__()
+        self.__print_profile_cmd__()
+        self.__profile__()
+        self.__print_profile_result__()
+        self.__print_profile_err__()
+        self.__clear__()
+        
 
-    def __parse(self):
+    def __parse__(self):
         self.configs = self.parser.parse_args(self.argv)
-        self.connector = self.__get_connector()
+        self.connector = self.__get_connector__()
 
-    def __profile(self):
-        self.profiler = self.__get_profiler()
+    def __profile__(self):
+        self.profiler = self.__get_profiler__()
         self.profiler.profile()
 
-    def __print_profile_cmd(self):
-        self.profiler = self.__get_profiler()
-        print(self.profiler.profile_cmd())
+    def __print_profile_cmd__(self):
+        self.profiler = self.__get_profiler__()
+        print(self.profiler.__profile_cmd__())
 
-    def __get_connector(self) -> Connector:
-        """
-        instantiate a Connector based on the parsed configuration
-        :return: an instance of Connector
-        """
+    def __print_profile_result__(self):
+        self.profiler.result_output()
+
+    def __print_profile_err__(self):
+        self.profiler.err_output()
+
+    """
+        remove all tmp files and kill perf(sometimes perf will not killed by the script.)
+    """
+    def __clear__(self):
+        self.profiler.clear()
+
+    def __get_connector__(self) -> Connector:
         if self.configs["host_type"] == "local":
             return LocalConnector(self.configs)
         else:
-            return RemoteConnector(self.configs, host_address=self.configs["host_address"])
+            return RemoteConnector(self.configs)
 
-    def __get_profiler(self) -> Profiler:
-        """
-        instantiate a Profiler which has a reference to an instance of Connector and a reference to an instance of configs.
-        Profiler will call the methods provided by Connector to execute command on system under test
-        :return: 
-        """
+    def __get_profiler__(self) -> Profiler:
         return Profiler(self.connector, self.configs)
 
-    def __get_analyzer(self) -> Analyzer:
+    def __get_analyzer__(self) -> Analyzer:
         pass

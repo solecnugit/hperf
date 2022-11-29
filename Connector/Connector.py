@@ -11,7 +11,7 @@ class Connector:
         You should call this func only when you want to run a profiling command.
     """
 
-    def run_command_with_file(self, command: str) -> str:
+    def run_command_with_file(self, command: str):
         pass
 
     """
