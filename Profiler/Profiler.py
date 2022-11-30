@@ -35,12 +35,12 @@ class Profiler:
         return cmd
 
     def __perf_cmd__(self):
-        cmd = "nohup 3>\"$perf_result\" perf stat -e {} -C {} -A -x, --log-fd 3 >/dev/null 2>\"$perf_error\" &\n".format(
+        cmd = "nohup 3>\"$perf_result\" perf stat -e {} -C {} -A -x, --log-fd 3 2>\"$perf_error\" &\n".format(
             self.event_groups, self.cpu_list)
         cmd += "perf_pid=$!\n"
         return cmd
 
     def __wait_cmd__(self):
         cmd = "tail -f --pid={} /dev/null\n".format(self.pid)
-        cmd += "kill -INT $perf_pid\n"
+        cmd += "kill -2 $perf_pid\n"
         return cmd
