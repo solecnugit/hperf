@@ -1,43 +1,46 @@
 from Connector.Connector import Connector
-
+from Profiler.EventGroup import EventGroup
 
 class Profiler:
-    def __init__(self,
-                 connector: Connector,
-                 interval: int = 1000,
-                 interval_count: int = 5):
+    def __init__(self, connector: Connector, configs: dict):
         self.connector = connector
-        self.interval = interval  # sampling interval (ms)
-        self.interval_count = interval_count  # the number of sampling, profiling time (ms) = interval * interval_count
-        self.event_list = "cycles,instructions"
-        self.perf_output_path = "/tmp/hperf_tmp"  # output of perf command
-        self.cpu_list = "0-3"  # the index of CPUs to be monitored
-
-    def runtime_check(self) -> bool:
-        """
-        check if any other profiler already running on the system under test
-        :return:
-        """
-        process_check_list = ["perf", "vtune"]
-        for process in process_check_list:
-            check_cmd = f"ps -ef | grep {process} | grep -v grep"
-            output = self.connector.run_command(check_cmd)
-            if output.strip() != "":
-                return False
-            else:
-                continue
-        return True
-
-    def get_system_info(self) -> dict:
-        """
-        obtain various information of the system under test through Connector
-        :return: a dict of information
-        """
+        event_groups = EventGroup(configs["metrics"], connector)
+        self.event_groups = event_groups.get_event_groups()
+        self.tmp_dir = configs["tmp_dir"]
+        self.cpu_list = configs["cpu_list"]
+        self.pid = configs["pid"]
 
     def profile(self):
-        perf_cmd = f"3>{self.perf_output_path} " \
-                   f"perf stat -e {self.event_list} -x, " \
-                   f"-C {self.cpu_list} -A -I {self.interval} " \
-                   f"--interval-count {self.interval_count} --log-fd 3"
-        self.connector.run_command(perf_cmd)
-        print("profiling completed.")
+        command = self.__profile_cmd__()
+        self.connector.run_command_with_file(command)
+
+    def result_output(self):
+        result = self.connector.get_result()
+        print("perf_result:")
+        print(result)
+
+    def err_output(self):
+        print("perf_err:")
+
+    def clear(self):
+        self.connector.clear()
+
+    def __profile_cmd__(self) -> str:
+        return self.__create_tmp_file__() + self.__perf_cmd__() + self.__wait_cmd__()
+
+    def __create_tmp_file__(self):
+        cmd = "TMP_DIR={}\n".format(self.tmp_dir)
+        cmd += "perf_result=$(mktemp -t -p $TMP_DIR hperf_perf_result.XXXXXX)\n"
+        cmd += "perf_error=$(mktemp -t -p $TMP_DIR hperf_perf_error.XXXXXX)\n"
+        return cmd
+
+    def __perf_cmd__(self):
+        cmd = "nohup 3>\"$perf_result\" perf stat -e {} -C {} -A -x, --log-fd 3 2>\"$perf_error\" &\n".format(
+            self.event_groups, self.cpu_list)
+        cmd += "perf_pid=$!\n"
+        return cmd
+
+    def __wait_cmd__(self):
+        cmd = "tail -f --pid={} /dev/null\n".format(self.pid)
+        cmd += "kill -2 $perf_pid\n"
+        return cmd

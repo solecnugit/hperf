@@ -1,14 +1,7 @@
 from argparse import ArgumentParser
 from typing import Sequence
-
-from Analyzer.Analyzer import Analyzer
-from Connector.Connector import Connector
-from Connector.LocalConnector import LocalConnector
-from Connector.RemoteConnector import RemoteConnector
 import json
-
-from Profiler.Profiler import Profiler
-from Task.Task import Task
+import os
 
 
 class Parser:
@@ -21,16 +14,6 @@ class Parser:
         constructor of `Parser`
         """
         self.parser = ArgumentParser()
-        # a dict stored parsed configurations, initialized by default configurations
-        self.configs = {
-            "host_type": "local",
-            "host_address": "",
-            "profiling_time": 5,
-            "workload_command": ""
-        }
-        # define arguments: workload_command
-        self.parser.add_argument("workload_command",
-                                 help="Any command you can specify in a shell")
         # define options
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("-l", "--local",
@@ -38,80 +21,71 @@ class Parser:
                            action="store_true")
         group.add_argument("-r", "--remote",
                            type=str,
-                           help="profile on remote host")
-        self.parser.add_argument("-c", "--config",
+                           help="profile on remote host and specify a connect string.")
+        self.parser.add_argument("-C", "--config",
                                  type=str,
-                                 help="specify a configuration file with JSON format")
+                                 help="specify a configuration file with JSON format.")
         self.parser.add_argument("-t", "--time",
                                  type=int,
-                                 help="time of profiling (s)")
-        self.parser.add_argument("-v", "--verbose",
-                                 help="increase output verbosity",
-                                 action="store_true")
+                                 help="time of profiling (s).")
+        self.parser.add_argument("-p",
+                                 "--pid",
+                                 help="pid of the process that hperf profile.")
+        self.parser.add_argument("-c",
+                                 "--cpu",
+                                 help="specify core(s) id to profile.")
+        self.parser.add_argument("--tmp_dir", type=str,
+                                 help="the temporary directory to store results and logs.")
+        self.parser.add_argument("--metrics", type=str,
+                                 help="metrics you want to profile 😊.")
+        self.parser.add_argument(
+            "--port", type=int, help="the remote ssh port")
+        self.parser.add_argument(
+            "--nmi", help="Whether to turn off NMI watchdog.", action="store_true")
 
-    def parse_args(self, argv: Sequence[str]) -> None:
+    def parse_args(self, argv: Sequence[str]) -> dict:
         """
         parse arguments passed from command line and return an instance of Connector
         :param argv: a list of arguments
+        :return configs: configure of this hperf run
         """
+        configs = {}
         args = self.parser.parse_args(argv)
-        # if -c option is specified, load the JSON file and initialize config dict
+        # if -C option is specified, load the JSON file and initialize config dict
         if args.config:
             with open(args.config) as f:
-                self.configs.update(json.load(f))
+                configs.update(json.load(f))
         # parse other options and arguments and update config dict
         # config specified in command line will overwrite the config defined in JSON file
-        self.configs["workload_command"] = args.workload_command
-        if args.verbose:
-            print("Verbosity turned on.")
         if args.remote:
-            self.configs["host_type"] = "remote"
-            self.configs["host_address"] = args.remote
+            configs["host_type"] = "remote"
+            self.__parse_remote_str__(args.remote, configs)
+            if args.port:
+                configs["port"] = args.port
         else:
-            self.configs["host_type"] = "local"
-            self.configs["host_address"] = ""
+            configs["host_type"] = "local"
+        if args.pid:
+            configs["pid"] = args.pid
+        if args.cpu:
+            configs["cpu_list"] = args.cpu
+        if args.tmp_dir:
+            configs["tmp_dir"] = args.tmp_dir
+        if args.metrics:
+            configs["metrics"] = args.metrics
+        return configs
 
-    def get_args(self) -> dict:
-        """
-        return a dict of configurations
-        :return: a dict of configurations
-        """
-        return self.configs
+    """
+        Parse string including username, hostname, password or private key file.
+        The string format is 'username@hostname:password(private key file)'
+    """
 
-    def get_connector(self) -> Connector:
-        """
-        instantiate a Connector based on the parsed configuration
-        :return: an instance of Connector
-        """
-        if self.configs["host_type"] == "local":
-            return LocalConnector()
+    def __parse_remote_str__(self, remote_str: str, configs: dict):
+        remote_str.strip()
+        remote_strs = remote_str.split("@", 1)
+        configs["user_name"] = remote_strs[0]
+        remote_strs = remote_strs[1].split(":", 1)
+        configs["host_name"] = remote_strs[0]
+        if os.path.exists(remote_strs[1]):
+            configs["private_key"] = remote_strs[1]
         else:
-            return RemoteConnector(host_address=self.configs["host_address"])
-
-    def get_profiler(self, connector: Connector) -> Profiler:
-        """
-        instantiate a Profiler based on the parsed configuration
-        a instance of Profiler has a member of a reference to an instance of Connector.
-        Profiler will call the methods provided by Connector to execute command on system under test
-        :param connector: an instance of Connector
-        :return:
-        """
-        return Profiler(connector=connector,
-                        profiling_time=self.configs["profiling_time"])
-
-    def get_task(self, connector: Connector) -> Task:
-        """
-        instantiate a Task based on the parsed configuration
-        :param connector: an instance of Connector
-        :return:
-        """
-        return Task(connector=connector,
-                    workload_command=self.configs["workload_command"])
-
-    def get_analyzer(self, connector: Connector) -> Analyzer:
-        """
-        instantiate an Analyzer based on the parsed configuration
-        :param connector: an instance of Connector
-        :return:
-        """
-        return Analyzer(connector=connector)
+            configs["password"] = remote_strs[1]
