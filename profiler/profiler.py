@@ -1,5 +1,5 @@
-from Connector.Connector import Connector
-from Profiler.EventGroup import EventGroup
+from connector import Connector
+from profiler.event_group import EventGroup
 
 class Profiler:
     def __init__(self, connector: Connector, configs: dict):

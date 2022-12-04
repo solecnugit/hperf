@@ -4,13 +4,13 @@ import json
 import os
 
 
-class Parser:
+class OptParser:
     """
-    Parser is responsible for parsing arguments passed from command line and instantiate Task, Profiler and Connector
+    OptParser is responsible for parsing arguments passed from command line and instantiate Task, Profiler and Connector
     """
     def __init__(self) -> None:
         """
-        Constructor of 'Parser'
+        Constructor of 'OptParser'
         """
         self.parser = ArgumentParser()
         # Define options:

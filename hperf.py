@@ -1,6 +1,5 @@
 import sys
-from Parser.Parser import Parser
-from Controller.Controller import Controller
+from controller import Controller
 
 
 # The entrance of hperf. Users can invoke hperf from command line, like:

@@ -1,5 +1,5 @@
 import pandas as pd
-from Connector.Connector import Connector
+from connector import Connector
 
 
 class Analyzer:

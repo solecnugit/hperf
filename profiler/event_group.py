@@ -1,4 +1,4 @@
-from Connector.Connector import Connector
+from connector import Connector
 
 class EventGroup:
     def __init__(self, metrics: str, connector: Connector) -> None:

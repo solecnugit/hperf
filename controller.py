@@ -1,11 +1,9 @@
 import logging
 from typing import Sequence
-from Parser.Parser import Parser
-from Profiler.Profiler import Profiler
-from Analyzer.Analyzer import Analyzer
-from Connector.Connector import Connector
-from Connector.LocalConnector import LocalConnector
-from Connector.RemoteConnector import RemoteConnector
+from opt_parser import OptParser
+from profiler.profiler import Profiler
+from analyzer import Analyzer
+from connector import Connector, LocalConnector, RemoteConnector
 
 
 class Controller:
@@ -22,7 +20,7 @@ class Controller:
         self.argv = argv    # the original command line options and parameters
 
         self.configs = {}    # a dict contains parsed configurations for the following steps
-        self.parser = Parser()
+        self.parser = OptParser()
 
         self.connector = None    # an instance of 'Connector'
         self.profiler = None    # an instance of 'Profiler'
@@ -76,12 +74,18 @@ class Controller:
         self.profiler.clear()
 
     def __get_connector__(self) -> Connector:
+        """
+        Depend on the parsed configurations, initialize a 'LocalConnector' or 'RemoteConnector'
+        """
         if self.configs["host_type"] == "local":
             return LocalConnector(self.configs)
         else:
             return RemoteConnector(self.configs)
 
     def __get_profiler__(self) -> Profiler:
+        """
+
+        """
         return Profiler(self.connector, self.configs)
 
     def __get_analyzer__(self) -> Analyzer:
