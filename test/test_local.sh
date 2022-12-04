@@ -1,4 +1,6 @@
-TMP_DIR=/home/huanlun/tmp/test
+#!/bin/bash
+
+TMP_DIR=/home/tongyu/tmp
 workload_output=$(mktemp -p $TMP_DIR -t hperf_workload_output.XXXXXX)
 nohup taskset -c 6 ./mat_mul 128 > "$workload_output" 2>&1 &
 workload_pid=$!

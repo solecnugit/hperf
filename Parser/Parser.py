@@ -6,15 +6,15 @@ import os
 
 class Parser:
     """
-    Parser: parse arguments passed from command line and instantiate Task, Profiler and Connector
+    Parser is responsible for parsing arguments passed from command line and instantiate Task, Profiler and Connector
     """
-
     def __init__(self) -> None:
         """
-        constructor of `Parser`
+        Constructor of 'Parser'
         """
         self.parser = ArgumentParser()
-        # define options
+        # Define options:
+        # [--local | --remote REMOTE]: Specify the system under test, local host or remote host.
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("-l", "--local",
                            help="profile on local host",
@@ -22,22 +22,30 @@ class Parser:
         group.add_argument("-r", "--remote",
                            type=str,
                            help="profile on remote host and specify a connect string.")
+        # [--config CONFIG]
         self.parser.add_argument("-C", "--config",
                                  type=str,
                                  help="specify a configuration file with JSON format.")
+        # [--time TIME]
         self.parser.add_argument("-t", "--time",
                                  type=int,
                                  help="time of profiling (s).")
+        # [--pid PID]: Specify a process to monitor by PID.
+        # 
         self.parser.add_argument("-p",
                                  "--pid",
                                  help="pid of the process that hperf profile.")
+        # [--cpu CPU]: Specify a list of cpu ids.
+        # hperf will conduct a system-wide profiling so that the list will only affect the output.
+        # If not specified, it will output performance data of all cpus.
         self.parser.add_argument("-c",
                                  "--cpu",
-                                 help="specify core(s) id to profile.")
-        self.parser.add_argument("--tmp_dir", type=str,
+                                 help="specify a list of cpu ids to profile.")
+        # [--tmp-dir]: 
+        self.parser.add_argument("--tmp-dir", type=str,
                                  help="the temporary directory to store results and logs.")
         self.parser.add_argument("--metrics", type=str,
-                                 help="metrics you want to profile 😊.")
+                                 help="metrics you want to profile.")
         self.parser.add_argument(
             "--port", type=int, help="the remote ssh port")
         self.parser.add_argument(
@@ -45,7 +53,7 @@ class Parser:
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
-        parse arguments passed from command line and return an instance of Connector
+        Parse the options and parameters passed from command line and return an instance of Connector
         :param argv: a list of arguments
         :return configs: configure of this hperf run
         """
