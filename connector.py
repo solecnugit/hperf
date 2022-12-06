@@ -1,6 +1,8 @@
 from datetime import datetime
 import subprocess
 import os
+import logging
+import re
 from paramiko import SSHClient, SFTPClient, AutoAddPolicy
 
 
@@ -33,17 +35,81 @@ class Connector:
 class LocalConnector(Connector):
     def __init__(self, configs: dict) -> None:
         """
-        constructor of `LocalConnector`, extended from `Connector`
+        Constructor of 'LocalConnector', extended from 'Connector'.
+        'Connector' provides various useful method for executing commands or shell scripts.
         """
         super(LocalConnector, self).__init__(configs)
-        self.tmp_dir = self.configs["tmp_dir"]
-        self.file_name = "hperf_{}.sh".format(datetime.now().strftime('%Y-%m-%d'))
-        self.path = self.tmp_dir + self.file_name
+        
+        # if the temporary directory is not exist, try to create the directory
+        self.tmp_dir = ""
+        if not os.path.exists(configs["tmp_dir"]):
+            try:
+                os.makedirs(configs["tmp_dir"])
+                self.tmp_dir = os.path.abspath(configs["tmp_dir"])
+                logging.debug(f"success to create the temporary directory {self.tmp_dir}")
+            except OSError:
+                logging.error("fail to create the temporary directory, reset to '/tmp/hperf/'")
+                os.makedirs("/tmp/hperf/")
+                self.tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
+        else:
+            self.tmp_dir = os.path.abspath(configs["tmp_dir"])
+            logging.debug(f"temporary directory {self.tmp_dir} already exists")
+        
+        # search the temporary directory 'self.tmp_dir' and get a string with an unique test id,
+        # then create a sub-directory named with this string in 'self.tmp_dir' for saving files for profiling.
+        self.test_id = self.__find_test_id()
+        os.makedirs(os.path.join(self.tmp_dir, self.test_id))
+        
+        # self.file_name = "hperf_{}.sh".format(datetime.now().strftime('%Y-%m-%d'))
+        # self.path = self.tmp_dir + self.file_name
 
-    def run_command_with_file(self, command: str):
-        self.__pre_bash_file__(command)
-        perf_process =  subprocess.Popen(["bash", "{}".format(self.path)], stdout=subprocess.PIPE)
+    def __find_test_id(self) -> str:
+        """
+        Search the temporary directory and return a string with an unique test id for today.
+        e.g. in temporary directory, there are many directory named '<date>_test<id>' for different runs.
+        If '20221206_test001' and '202211206_test002' are exist, the method will return '202211206_test002'.
+        :return: a directory name with an unique test id for today
+        """
+        today = datetime.now().strftime("%Y%m%d")
+        max_id = 0
+        pattern = f"{today}_test(\d+)"
+        for item in os.listdir(self.tmp_dir):
+            path = os.path.join(self.tmp_dir, item)
+            if os.path.isdir(path):
+                obj = re.search(pattern, path)
+                if obj:
+                    found_id = int(obj.group(1))
+                    if found_id > max_id:
+                        max_id = found_id
+        test_id = f"{today}_test{str(max_id + 1).zfill(3)}"
+        return test_id
+
+    def get_test_dir_path(self):
+        """
+        Get the path of the unique temporary directory for this test.
+        It should be <tmp_dir>/<test_id>, where <tmp_dir> is specified by user and <test_id> is unique in the <tmp_dir>. 
+        """
+        return os.path.join(self.tmp_dir, self.test_id)
+    
+    def run_script(self, script: str):
+        """
+        Create and run a script on SUT, then wait for the script finished.
+        :param script: the string of shell script
+        """
+        script_path = self.__generate_script(script)
+        perf_process = subprocess.Popen(["bash", f"{script_path}"], stdout=subprocess.PIPE)
         perf_process.wait()
+
+    def __generate_script(self, script: str):
+        """
+        Generate a profiling script on the SUT.
+        :param script: the string of shell script
+        :return: path of the script
+        """
+        script_path = os.path.join(self.tmp_dir, self.test_id, "perf.sh")
+        with open(script_path, 'w') as f:
+            f.write(script)
+        return script_path
 
     def get_result(self) -> str:
         ls_res = subprocess.Popen("cd {} && ls".format(self.tmp_dir), stdout=subprocess.PIPE, shell=True)
@@ -67,19 +133,15 @@ class LocalConnector(Connector):
     def clear(self):
         subprocess.Popen("cd {} && rm hperf* && kill -2 $(pgrep perf)".format(self.tmp_dir), shell=True)
 
-    """
-        Undone! Just return Icelacke.
-    """
-
+    # TODO: undone. 
+    # maybe it can be understood as a profiler to get static information on the SUT
     def get_cpu_architecture(self) -> str:
         return "Icelake"
 
+    # TODO: undone. 
+    # maybe it can be understood as a profiler to get static information on the SUT
     def runtime_check(self) -> bool:
-        raise NotImplemented("Undone!")
-
-    def __pre_bash_file__(self, command: str):
-        with open(self.path, 'w') as f:
-            f.write(command)
+        pass
 
 
 class RemoteConnector(Connector):

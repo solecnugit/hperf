@@ -2,7 +2,8 @@ import sys
 from controller import Controller
 
 
-# The entrance of hperf. Users can invoke hperf from command line, like:
+# The entrance of hperf. 
+# Users can invoke hperf from command line, like:
 # $ python hperf.py <params>
 if __name__ == "__main__":
     # Initialize Controller, which controls the process of hperf.
