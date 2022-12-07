@@ -18,7 +18,7 @@ class Controller:
         """
         Constructor of 'Controller'.
         :param argv: options and parameters passed from command line when invoke 'hperf'. 
-        Usually, it should be 'sys.argv[1:]'.
+        Usually, it should be 'sys.argv[1:]' (since 'sys.argv[0]' is 'hperf.py').
         """
         self.argv = argv    # the original command line options and parameters
 
@@ -38,17 +38,20 @@ class Controller:
 
     def hperf(self):
         """
-        Conduct profiling.
         This method covers the whole process of profiling.
         """
         # Step 1. parse the original command line options and parameters
         self.__parse()
-        # TODO: If the '--verbose' or '-v' option declared, print corresponding command in console for debugging
+        # TODO: If the '--verbose' or '-v' option declared, print corresponding command in console for debugging 
+        # by adjusting 'logging.basicConfig(level=...)'
 
-        # Step 2. conduct profiling by executing 'perf stat ...' command
+        # Step 2. conduct profiling by executing script with 'perf stat ...' command
+        # raw performance data will be saved in the temporary directory
         self.__profile()
 
-        # Step 3. 
+        # Step 3. analyze the raw performance data and output realiable performance metrics
+        self.__analyze()
+
         # self.__print_profile_result__()
         # self.__print_profile_err__()
         # self.__clear__()
@@ -56,40 +59,17 @@ class Controller:
     def __parse(self):
         """
         Parse the original command line options and parameters and get the configuration dict.
-        Based on the configuration dict, initialze a 'Connector'.
+        Based on the configuration dict, initialze a 'Connector' for 'Profiler' and 'Analyzer'.
         """
         self.configs = self.parser.parse_args(self.argv)
         self.connector = self.__get_connector()
-
-    def __profile(self):
-        """
-
-        """
-        self.profiler = self.__get_profiler()
-        self.profiler.profile()
-
-    # TODO: this method can be subsituted by adjusting the level of 'logging.basicConfig'
-    # def __print_profile_cmd__(self):
-    #     self.profiler = self.__get_profiler__()
-    #     print(self.profiler.__profile_cmd__())
-
-    def __print_profile_result__(self):
-        self.profiler.result_output()
-
-    def __print_profile_err__(self):
-        self.profiler.err_output()
-
-    """
-        remove all tmp files and kill perf(sometimes perf will not killed by the script.)
-    """
-
-    def __clear__(self):
-        self.profiler.clear()
 
     def __get_connector(self) -> Connector:
         """
         Depend on the parsed configurations, initialize a 'LocalConnector' or 'RemoteConnector'
         """
+        # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
+        # if the parsed temporary directory is invalid.
         if self.configs["host_type"] == "local":
             logging.debug("SUT is local host")
             return LocalConnector(self.configs)
@@ -97,11 +77,37 @@ class Controller:
             logging.debug("SUT is remote host")
             return RemoteConnector(self.configs)
 
-    def __get_profiler(self) -> Profiler:
+    def __profile(self):
         """
+        Generate and execute profiling script, then save the raw performance data in the temporary directory
+        """
+        self.profiler = Profiler(self.connector, self.configs)
+        self.profiler.profile()
+    
+    # TODO: this method can be subsituted by adjusting the level of 'logging.basicConfig'
+    # def __print_profile_cmd__(self):
+    #     self.profiler = self.__get_profiler__()
+    #     print(self.profiler.__profile_cmd__())
 
+    def __analyze(self):
+        self.analyzer = Analyzer(self.connector, self.configs)
+        print(self.analyzer.get_event_all_cpu_total())
+    
+    def __print_profile_result__(self):
+        self.profiler.result_output()
+
+    def __print_profile_err__(self):
+        self.profiler.err_output()
+
+    def __clear__(self):
         """
-        return Profiler(self.connector, self.configs)
+        remove all tmp files and kill perf(sometimes perf will not killed by the script.)
+        """
+        self.profiler.clear()
+
+    
+
+    
 
     def __get_analyzer__(self) -> Analyzer:
         pass

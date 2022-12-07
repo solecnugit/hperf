@@ -4,7 +4,15 @@ import os
 import logging
 
 class Profiler:
+    """
+    'Profiler' is responsible for collecting raw microarchitecture performance data.
+    """
     def __init__(self, connector: Connector, configs: dict):
+        """
+        Constructor of 'Profiler'
+        :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
+        :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
+        """
         self.connector = connector
         self.configs = configs
         # event_groups = EventGroup(configs["metrics"], connector)
@@ -16,18 +24,9 @@ class Profiler:
 
     def profile(self):
         script = self.__get_profile_script()
+        logging.info("start profiling")
         self.connector.run_script(script)
-
-    def result_output(self):
-        result = self.connector.get_result()
-        print("perf_result:")
-        print(result)
-
-    def err_output(self):
-        print("perf_err:")
-
-    def clear(self):
-        self.connector.clear()
+        logging.info("end profiling")
 
     def __get_profile_script(self) -> str:
         """
@@ -38,10 +37,21 @@ class Profiler:
         script += f'TMP_DIR={self.connector.get_test_dir_path()}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
-        script += f'3>"$perf_result" perf stat -e {self.event_groups} -A -a -x, --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
+        script += f'3>"$perf_result" perf stat -e {self.event_groups} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
         logging.debug("profiling script: \n" + script)
         return script
+    
+    def result_output(self):
+        result = self.connector.get_result()
+        print("perf_result:")
+        print(result)
+
+    def err_output(self):
+        print("perf_err:")
+
+    def clear(self):
+        self.connector.clear()
 
     # def __create_tmp_file__(self):
     #     cmd = "TMP_DIR={}\n".format(self.tmp_dir)

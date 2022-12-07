@@ -42,26 +42,35 @@ class LocalConnector(Connector):
         
         # if the temporary directory is not exist, try to create the directory
         self.tmp_dir = ""
-        if not os.path.exists(configs["tmp_dir"]):
+        if os.path.exists(configs["tmp_dir"]):
+            if os.access(configs["tmp_dir"], os.R_OK | os.W_OK):
+                self.tmp_dir = os.path.abspath(configs["tmp_dir"])
+                logging.debug(f"set temporary directory: {self.tmp_dir} (already exists)")
+            else:
+                bad_tmp_dir = os.path.abspath(configs["tmp_dir"])
+                logging.warning(f"invalid temporary directory: {bad_tmp_dir} (already exists but has no R/W permission)")
+                logging.warning("reset temporary directory: '/tmp/hperf/'")
+                os.makedirs("/tmp/hperf/", exist_ok=True)
+                # Note: this action will change the value of 'configs["tmp_dir"]'
+                self.tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
+        else:
             try:
                 os.makedirs(configs["tmp_dir"])
                 self.tmp_dir = os.path.abspath(configs["tmp_dir"])
                 logging.debug(f"success to create the temporary directory {self.tmp_dir}")
             except OSError:
-                logging.error("fail to create the temporary directory, reset to '/tmp/hperf/'")
-                os.makedirs("/tmp/hperf/")
+                bad_tmp_dir = os.path.abspath(configs["tmp_dir"])
+                logging.warning(f"invalid temporary directory: {bad_tmp_dir} (fail to create the temporary directory)")
+                logging.warning("reset temporary directory: '/tmp/hperf/'")
+                os.makedirs("/tmp/hperf/", exist_ok=True)
+                # Note: this action will change the value of 'configs["tmp_dir"]'
                 self.tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
-        else:
-            self.tmp_dir = os.path.abspath(configs["tmp_dir"])
-            logging.debug(f"temporary directory {self.tmp_dir} already exists")
         
         # search the temporary directory 'self.tmp_dir' and get a string with an unique test id,
         # then create a sub-directory named with this string in 'self.tmp_dir' for saving files for profiling.
         self.test_id = self.__find_test_id()
-        os.makedirs(os.path.join(self.tmp_dir, self.test_id))
-        
-        # self.file_name = "hperf_{}.sh".format(datetime.now().strftime('%Y-%m-%d'))
-        # self.path = self.tmp_dir + self.file_name
+        os.makedirs(self.get_test_dir_path())
+        logging.info(f"test directory: {self.get_test_dir_path()}")
 
     def __find_test_id(self) -> str:
         """
@@ -97,8 +106,10 @@ class LocalConnector(Connector):
         :param script: the string of shell script
         """
         script_path = self.__generate_script(script)
-        perf_process = subprocess.Popen(["bash", f"{script_path}"], stdout=subprocess.PIPE)
-        perf_process.wait()
+        logging.debug(f"run script: {script_path}")
+        process = subprocess.Popen(["bash", f"{script_path}"], stdout=subprocess.PIPE)
+        process.wait()
+        logging.debug(f"finish script: {script_path}")
 
     def __generate_script(self, script: str):
         """
@@ -109,8 +120,16 @@ class LocalConnector(Connector):
         script_path = os.path.join(self.tmp_dir, self.test_id, "perf.sh")
         with open(script_path, 'w') as f:
             f.write(script)
+        logging.debug(f"generate script: {script_path}")
         return script_path
 
+    def get_raw_data_path(self) -> str:
+        """
+        
+        """
+        return os.path.join(self.get_test_dir_path(), "perf_result")
+
+    
     def get_result(self) -> str:
         ls_res = subprocess.Popen("cd {} && ls".format(self.tmp_dir), stdout=subprocess.PIPE, shell=True)
         grep_res = subprocess.Popen("grep hperf_perf_re", stdin=ls_res.stdout, stdout=subprocess.PIPE, shell=True)
