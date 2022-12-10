@@ -69,7 +69,7 @@ class Controller:
         Depend on the parsed configurations, initialize a 'LocalConnector' or 'RemoteConnector'
         """
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
-        # if the parsed temporary directory is invalid.
+        # if the parsed temporary directory is invalid (cannot be accessed).
         if self.configs["host_type"] == "local":
             logging.debug("SUT is local host")
             return LocalConnector(self.configs)

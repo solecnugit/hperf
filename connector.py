@@ -9,34 +9,62 @@ from paramiko import SSHClient, SFTPClient, AutoAddPolicy
 class Connector:
     """
     the Abstract class of all Connectors.
+    'Connector' provides various useful method for executing commands or shell scripts.
     """
     def __init__(self, configs: dict) -> None:
+        """
+        Constructor of 'Connector'.
+        When a 'Connector' is instantiated, it will try to access the temporary directory specified by command line options
+        (default /tmp/hperf/) and create an unique test directory in the temporary directory.
+        The test directory is for this run of hperf and used to save profiling scripts and their outputs, 
+        log file, raw performance data, etc.
+        # Note: this action will change the value of 'configs["tmp_dir"]'
+        """
+        # common initialization shared by 'LocalConnector' and 'RemoteConnector'
         self.configs = configs
 
-    def run_command_with_file(self, command: str):
+    def get_test_dir_path(self) -> str:
+        """
+        Get the abusolute path of the unique test directory for this test on the SUT.
+        For 'LocalConnector', the returned path can be accessed on local host.
+        For 'RemoteConnector', the returned path are in the remote host so that cannot be accessed locally.
+        """
         pass
 
-    def get_result(self) -> str:
-        pass
+    def run_script(self, script: str):
+        """
+        Create and run a script on SUT, then wait for the script finished.
+        :param script: the string of shell script
+        """
+    
+    # def run_command_with_file(self, command: str):
+    #     pass
 
-    def get_err(self) -> str:
-        pass
+    # def get_result(self) -> str:
+    #     pass
 
-    def runtime_check(self) -> bool:
-        pass
+    # def get_err(self) -> str:
+    #     pass
 
-    def get_cpu_architecture(self) -> str:
-        pass
+    # def runtime_check(self) -> bool:
+    #     pass
 
-    def clear(self):
-        pass
+    # def get_cpu_architecture(self) -> str:
+    #     pass
+
+    # def clear(self):
+    #     pass
 
 
 class LocalConnector(Connector):
     def __init__(self, configs: dict) -> None:
         """
-        Constructor of 'LocalConnector', extended from 'Connector'.
-        'Connector' provides various useful method for executing commands or shell scripts.
+        Constructor of 'Connector'.
+        When a 'Connector' is instantiated, it will try to access the temporary directory specified by command line options
+        (default /tmp/hperf/) and create an unique test directory in the temporary directory.
+        The test directory is for this run of hperf and used to save profiling scripts and their outputs, 
+        log file, raw performance data, etc.
+        # Note: this action will change the value of 'configs["tmp_dir"]'
         """
         super(LocalConnector, self).__init__(configs)
         
@@ -93,42 +121,38 @@ class LocalConnector(Connector):
         test_id = f"{today}_test{str(max_id + 1).zfill(3)}"
         return test_id
 
-    def get_test_dir_path(self):
+    def get_test_dir_path(self) -> str:
         """
-        Get the path of the unique temporary directory for this test.
-        It should be <tmp_dir>/<test_id>, where <tmp_dir> is specified by user and <test_id> is unique in the <tmp_dir>. 
+        Get the abusolute path of the unique test directory for this test on the SUT.
+        For 'LocalConnector', the returned path can be accessed on local host.
+        For 'RemoteConnector', the returned path are in the remote host so that cannot be accessed locally.
         """
         return os.path.join(self.tmp_dir, self.test_id)
     
-    def run_script(self, script: str):
+    def run_script(self, script: str) -> int:
         """
         Create and run a script on SUT, then wait for the script finished.
         :param script: the string of shell script
+        :return: the returned value of executing the shell script
         """
         script_path = self.__generate_script(script)
         logging.debug(f"run script: {script_path}")
         process = subprocess.Popen(["bash", f"{script_path}"], stdout=subprocess.PIPE)
-        process.wait()
+        returned_value = process.wait()
         logging.debug(f"finish script: {script_path}")
+        return returned_value
 
-    def __generate_script(self, script: str):
+    def __generate_script(self, script: str) -> str:
         """
         Generate a profiling script on the SUT.
         :param script: the string of shell script
-        :return: path of the script
+        :return: path of the script on the SUT
         """
         script_path = os.path.join(self.tmp_dir, self.test_id, "perf.sh")
         with open(script_path, 'w') as f:
             f.write(script)
         logging.debug(f"generate script: {script_path}")
         return script_path
-
-    def get_raw_data_path(self) -> str:
-        """
-        
-        """
-        return os.path.join(self.get_test_dir_path(), "perf_result")
-
     
     def get_result(self) -> str:
         ls_res = subprocess.Popen("cd {} && ls".format(self.tmp_dir), stdout=subprocess.PIPE, shell=True)
