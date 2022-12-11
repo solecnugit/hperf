@@ -75,6 +75,9 @@ class Controller:
             return LocalConnector(self.configs)
         else:
             logging.debug("SUT is remote host")
+            # TODO: 'RemoteConnect' has not been fully implemented, when it is ready, remove the follwing exit()
+            logging.error("RemoteConnector has not been implemented yet")
+            exit(-1)
             return RemoteConnector(self.configs)
 
     def __profile(self):

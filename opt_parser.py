@@ -1,8 +1,7 @@
 from argparse import ArgumentParser, REMAINDER
 from typing import Sequence
-import json
-import os
 import logging
+from getpass import getpass
 
 
 class OptParser:
@@ -79,7 +78,8 @@ class OptParser:
         configs = {}
 
         args = self.parser.parse_args(argv)
-        logging.debug(f"options and arguments passed from command line: {args}")
+        logging.debug(
+            f"options and arguments passed from command line: {args}")
 
         # if -f/--config-file option is specified, load the JSON file and initialize config dict
         # if args.config:
@@ -91,11 +91,11 @@ class OptParser:
         # step 1. workload command
         if args.command:
             configs["command"] = " ".join(args.command)
-        
+
         # step 2. local / remote SUT (default local)
         if args.remote:
             configs["host_type"] = "remote"
-            remote_configs = self.__parse_remote_str__(args.remote)
+            remote_configs = self.__parse_remote_str(args.remote)
             configs.update(remote_configs)
             # if args.port:
             #     configs["port"] = args.port
@@ -106,7 +106,7 @@ class OptParser:
         #     configs["pid"] = args.pid
         # if args.cpu:
         #     configs["cpu_list"] = args.cpu
-        
+
         # step 3. temporary directory
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
@@ -118,28 +118,30 @@ class OptParser:
 
         return configs
 
-    def __parse_remote_str__(self, ssh_conn_str: str) -> dict:
+    def __parse_remote_str(self, ssh_conn_str: str) -> dict:
         """
-        Parse the SSH connection string with the format of 'username@hostname:password(private key file)'
+        Parse the SSH connection string with the format of 'username@hostname', then ask user to enter the password.
         :param ssh_conn_str: SSH connection string
         :return: a dict of remote host informations
         """
         # TODO: try to parse all information for the remote SSH connection from the parameter of -r / --remote option.
+        # e.g. ssh_conn_str = "tongyu@ampere.solelab.tech"
 
         remote_configs = {}
-        # mock data
-        remote_configs["username"] = "tongyu"
-        remote_configs["hostname"] = "gpu2.solelab.tech"
-        remote_configs["private_key"] = "~/.ssh/id_rsa"
-        remote_configs["password"] = "123456"
-        return remote_configs
+        # parse the SSH connection string to get hostname and username
+        try:
+            remote_configs["username"] = ssh_conn_str.split("@")[0]
+            remote_configs["hostname"] = ssh_conn_str.split("@")[1]
+        except IndexError:
+            logging.error(f"invalid SSH connection string: {ssh_conn_str}")
+            exit(-1)
 
-        # remote_str.strip()
-        # remote_strs = remote_str.split("@", 1)
-        # configs["user_name"] = remote_strs[0]
-        # remote_strs = remote_strs[1].split(":", 1)
-        # configs["host_name"] = remote_strs[0]
-        # if os.path.exists(remote_strs[1]):
-        #     configs["private_key"] = remote_strs[1]
-        # else:
-        #     configs["password"] = remote_strs[1]
+        # get the password by command line interaction
+        remote_configs["password"] = getpass(f'connect to {remote_configs["hostname"]}, '
+                                             'enter the password for user {remote_configs["username"]}: ')
+        
+        # TODO: other configurations may be used in future
+        remote_configs["port"] = 22
+        remote_configs["private_key"] = "~/.ssh/id_rsa"
+
+        return remote_configs
