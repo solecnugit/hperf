@@ -12,7 +12,6 @@ class Controller:
     Users can conduct profiling by calling 'hperf()' method after instantiate 'Controller'.
     """
     VERSION = "v1.0.0"
-    LOG_FORMAT = "%(asctime)-15s %(levelname)-8s %(message)s"    # log format for 'loggging'
 
     def __init__(self, argv: Sequence[str]):
         """
@@ -30,7 +29,7 @@ class Controller:
         self.analyzer = None    # an instance of 'Analyzer'
 
         # TODO: Set more configs for logging, such as the path of log file.
-        logging.basicConfig(format=Controller.LOG_FORMAT, level=logging.DEBUG)
+        logging.basicConfig(format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.INFO)
         logging.info(f"hperf {Controller.VERSION}")    # show the version of hperf
 
         # TODO: using global 'logging' instead of bringing in a reference of 'Logger' for convinience
