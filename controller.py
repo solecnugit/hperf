@@ -69,12 +69,15 @@ class Controller:
         Depend on the parsed configurations, initialize a 'LocalConnector' or 'RemoteConnector'
         """
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
-        # if the parsed temporary directory is invalid.
+        # if the parsed temporary directory is invalid (cannot be accessed).
         if self.configs["host_type"] == "local":
             logging.debug("SUT is local host")
             return LocalConnector(self.configs)
         else:
             logging.debug("SUT is remote host")
+            # TODO: 'RemoteConnect' has not been fully implemented, when it is ready, remove the follwing exit()
+            logging.error("RemoteConnector has not been implemented yet")
+            exit(-1)
             return RemoteConnector(self.configs)
 
     def __profile(self):
