@@ -4,6 +4,8 @@
 
 跨平台的微架构性能数据采集工具hperf
 
+> 本文档标注\[开发中]的功能，将在未来版本中得到支持。
+
 ### 命名
 
 hperf的名称取自Hierarchical Performance Profiling Tools，使用一种层次化的性能数据采集方法以及性能分析方法，Hierarchical具体体现在：
