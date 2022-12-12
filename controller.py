@@ -89,22 +89,9 @@ class Controller:
     def __analyze(self):
         self.analyzer = Analyzer(self.connector, self.configs)
         print(self.analyzer.get_event_all_cpu_total())
-    
-    def __print_profile_result__(self):
-        self.profiler.result_output()
-
-    def __print_profile_err__(self):
-        self.profiler.err_output()
 
     def __clear__(self):
         """
         remove all tmp files and kill perf(sometimes perf will not killed by the script.)
         """
         self.profiler.clear()
-
-    
-
-    
-
-    def __get_analyzer__(self) -> Analyzer:
-        pass

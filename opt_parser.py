@@ -57,24 +57,12 @@ class OptParser:
                                  type=int,
                                  help="time of profiling (s).")
 
-        # [--pid PID]: Specify a process to monitor by PID.
-        # self.parser.add_argument("-p", "--pid",
-        #                          metavar="PID",
-        #                          type=str,
-        #                          help="pid of the process that hperf profile.")
         # [--cpu CPU]: Specify a list of cpu ids.
         # hperf will conduct a system-wide profiling so that the list will only affect the output.
         # If not specified, it will output performance data of all cpus.
         # self.parser.add_argument("-c",
         #                          "--cpu",
         #                          help="specify a list of cpu ids to profile.")
-
-        # self.parser.add_argument("--metrics", type=str,
-        #                          help="metrics you want to profile.")
-        # self.parser.add_argument(
-        #     "--port", type=int, help="the remote ssh port")
-        # self.parser.add_argument(
-        #     "--nmi", help="Whether to turn off NMI watchdog.", action="store_true")
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
@@ -110,22 +98,15 @@ class OptParser:
             configs["host_type"] = "remote"
             remote_configs = self.__parse_remote_str(args.remote)
             configs.update(remote_configs)
-            # if args.port:
-            #     configs["port"] = args.port
         else:
             configs["host_type"] = "local"
 
-        # if args.pid:
-        #     configs["pid"] = args.pid
         # if args.cpu:
         #     configs["cpu_list"] = args.cpu
 
         # step 3. temporary directory
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
-
-        # if args.metrics:
-        #     configs["metrics"] = args.metrics
 
         logging.debug(f"parsed configurations: {configs}")
 

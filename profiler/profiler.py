@@ -53,20 +53,3 @@ class Profiler:
 
     def clear(self):
         self.connector.clear()
-
-    # def __create_tmp_file__(self):
-    #     cmd = "TMP_DIR={}\n".format(self.tmp_dir)
-    #     cmd += "perf_result=$(mktemp -t -p $TMP_DIR hperf_perf_result.XXXXXX)\n"
-    #     cmd += "perf_error=$(mktemp -t -p $TMP_DIR hperf_perf_error.XXXXXX)\n"
-    #     return cmd
-
-    # def __perf_cmd__(self):
-    #     cmd = "nohup 3>\"$perf_result\" perf stat -e {} -C {} -A -x, --log-fd 3 2>\"$perf_error\" &\n".format(
-    #         self.event_groups, self.cpu_list)
-    #     cmd += "perf_pid=$!\n"
-    #     return cmd
-
-    # def __wait_cmd__(self):
-    #     cmd = "tail -f --pid={} /dev/null\n".format(self.pid)
-    #     cmd += "kill -2 $perf_pid\n"
-    #     return cmd
