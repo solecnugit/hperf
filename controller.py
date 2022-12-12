@@ -1,9 +1,10 @@
 import logging
 from typing import Sequence
 from opt_parser import OptParser
-from profiler.profiler import Profiler
+from profiler import Profiler
 from analyzer import Analyzer
 from connector import Connector, LocalConnector, RemoteConnector
+from event_group import EventGroup
 
 
 class Controller:
@@ -27,6 +28,7 @@ class Controller:
         self.connector = None    # an instance of 'Connector'
         self.profiler = None    # an instance of 'Profiler'
         self.analyzer = None    # an instance of 'Analyzer'
+        self.event_groups = None    # an instancce of 'EventGroup'
 
         # TODO: Set more configs for logging, such as the path of log file.
         logging.basicConfig(format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.INFO)
@@ -50,10 +52,6 @@ class Controller:
 
         # Step 3. analyze the raw performance data and output realiable performance metrics
         self.__analyze()
-
-        # self.__print_profile_result__()
-        # self.__print_profile_err__()
-        # self.__clear__()
     
     def __parse(self):
         """
@@ -83,12 +81,13 @@ class Controller:
         """
         Generate and execute profiling script, then save the raw performance data in the temporary directory
         """
-        self.profiler = Profiler(self.connector, self.configs)
+        self.event_groups = EventGroup(self.connector)
+        self.profiler = Profiler(self.connector, self.configs, self.event_groups)
         self.profiler.profile()
 
     def __analyze(self):
-        self.analyzer = Analyzer(self.connector, self.configs)
-        print(self.analyzer.get_event_all_cpu_total())
+        self.analyzer = Analyzer(self.connector, self.configs, self.event_groups)
+        print(self.analyzer.get_aggregated_metrics(to_csv=True))
 
     def __clear__(self):
         """

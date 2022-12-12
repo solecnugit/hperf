@@ -63,26 +63,26 @@ event_groups = [
 metrics = [
     {
         "metric": "CPU UTILIZATION",
-        "expression": "{22} / {10}"
+        "expression": "e22 / e10"
     },
     {
         "metric": "CPI",
-        "expression": "{20} / {21}"
+        "expression": "e20 / e21"
     },
     {
         "metric": "L1 CACHE MPKI",
-        "expression": "(1000 * {30}) / {21}"
+        "expression": "(1000 * e30) / e21"
     },
     {
         "metric": "L2 CACHE MPKI",
-        "expression": "(1000 * {31}) / {21}"
+        "expression": "(1000 * e31) / e21"
     },
     {
         "metric": "L3 CACHE MPKI",
-        "expression": "(1000 * {32}) / {21}"
+        "expression": "(1000 * e32) / e21"
     },
     {
         "metric": "BRANCH MISS RATE",
-        "expression": "{33} / {34}"
+        "expression": "e34 / e33"
     }
 ]

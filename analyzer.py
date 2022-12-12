@@ -1,19 +1,22 @@
 import pandas as pd
 import numpy as np
 from connector import Connector
+from event_group import EventGroup
 import os
 import logging
 
 
 class Analyzer:
-    def __init__(self, connector: Connector, configs: dict) -> None:
+    def __init__(self, connector: Connector, configs: dict, event_groups: EventGroup) -> None:
         """
         Constructor of 'Analyzer'
         :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
         :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
+        :param event_group: an instance of 'EventGroup'
         """
         self.connector = connector
         self.configs = configs
+        self.event_groups = event_groups
         
         self.raw_data_path = os.path.join(self.connector.get_test_dir_path(), "perf_result")
 
@@ -21,19 +24,51 @@ class Analyzer:
         self.raw_data = pd.read_csv(self.raw_data_path,
                                     header=None,
                                     names=["timestamp", "unit",
-                                           "value", "event"],
+                                           "value", "metric"],
                                     usecols=[0, 1, 2, 4])
 
-    def get_event_all_cpu_total(self, to_csv: bool = False) -> pd.DataFrame:
+    def get_aggregated_metrics(self, to_csv: bool = False) -> pd.DataFrame:
         """
         """
-        event_per_cpu = self.raw_data.groupby(["unit", "event"]).agg(
-            value_per_cpu=("value", np.sum)
+        # aggregate performance data for the whole measurement
+        event_per_cpu = self.raw_data.groupby(["unit", "metric"]).agg(
+            result=("value", np.sum)
         )
-        event_all_cpu_total = event_per_cpu.groupby(["event"]).agg(
-            value_all_cpu=("value_per_cpu", np.sum)
+
+        # if configs["cpu_list"] == 'all'
+
+        cpu_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
+        scoped_event_per_cpu = event_per_cpu.loc[cpu_list, :].reset_index()
+
+        mapping_perf_name_to_name = {}
+        for item in self.event_groups.events:
+            mapping_perf_name_to_name[item["perf_name"]] = item["name"]
+        
+        scoped_event_per_cpu["metric"] = scoped_event_per_cpu["metric"].apply(
+            lambda x: mapping_perf_name_to_name[x.split(":")[0]]
         )
+
+        mapping_name_to_id = {}
+        for item in self.event_groups.events:
+            mapping_name_to_id[item["name"]] = item["id"]
+
+        mapping_id_to_value = {}
+        for item in self.event_groups.events:
+            val = scoped_event_per_cpu[scoped_event_per_cpu["metric"]==item["name"]]["result"].iloc[0]
+            mapping_id_to_value[f"e{item['id']}"] = val
+
+        metric_results = {"metric": [], "result": []}
+
+        for metric in self.event_groups.metrics:
+            metric_results["metric"].append(metric["metric"])
+            val = eval(metric["expression"], mapping_id_to_value)
+            metric_results["result"].append(val)
+
+        scoped_event_per_cpu = pd.concat([scoped_event_per_cpu, pd.DataFrame(metric_results)], ignore_index=True)
+
         if to_csv:
             # TODO: save DataFrame to a CSV file
             logging.info("save DataFrame to CSV file")
-        return event_all_cpu_total
+        return scoped_event_per_cpu
+
+

@@ -1,5 +1,5 @@
 from connector import Connector
-from profiler.event_group import EventGroup
+from event_group import EventGroup
 import os
 import logging
 
@@ -7,17 +7,18 @@ class Profiler:
     """
     'Profiler' is responsible for collecting raw microarchitecture performance data.
     """
-    def __init__(self, connector: Connector, configs: dict):
+    def __init__(self, connector: Connector, configs: dict, event_groups: EventGroup):
         """
         Constructor of 'Profiler'
         :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
         :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
+        :param event_group: an instance of 'EventGroup'
         """
         self.connector = connector
         self.configs = configs
         # event_groups = EventGroup(configs["metrics"], connector)
         # self.event_groups = event_groups.get_event_groups()
-        self.event_groups = EventGroup(connector)
+        self.event_groups = event_groups
         # self.event_groups = "cycles:D,instructions:D,ref-cycles:D,'{r8D1,r10D1}','{rc4,rc5}'"
         # self.tmp_dir = configs["tmp_dir"]
         # self.cpu_list = configs["cpu_list"]

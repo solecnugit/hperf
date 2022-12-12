@@ -19,7 +19,7 @@ class EventGroup:
         logging.debug(f"architecture model: {self.arch}")
 
         # dynamic import event configurations based on the architecture of the SUT
-        arch_module = __import__(f"profiler.arch.{self.arch}", fromlist=[0])
+        arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
         self.events: list = getattr(arch_module, "events")
         self.other_events: list = getattr(arch_module, "other_events")
         self.pinned_events: list = getattr(arch_module, "pinned_events")
