@@ -57,8 +57,9 @@ hperf命令行语法规定，\<action>是必选项，使用hperf必须指定acti
 |-v \| --verbose| 过滤冗余的log信息|
 |-c \| --cpu|指定Workload运行的CPU核，默认为所有CPU核|
 
-### 性能测量数据
-根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。目前hperf可以输出除L3Cache Missrate以外的其他全部性能信息。
+### 性能指标测量
+根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。目前hperf可以输出除L3Cache Missrate以外的其他全部性能指标。
+除去性能指标外，hperf也会向用户输出原始的性能事件信息。
 
 ### 推荐使用案例
 ```bash
@@ -66,7 +67,8 @@ hperf -c 5 -v --tmp-dir ~/hperf/logs/ ./a.out
 ```
 
 在如上所示bash代码中，我们启动hperf获取a.out程序运行的性能数据。hperf将该进程绑定在CPU5运行，忽略冗余的log信息，并且设置hperf存放原始数据文件的目录。
-> 我们推荐使用hperf时，尽量使用-c选项指定CPU核，这样hperf测量的性能数据更具代表性。
+> 我们推荐使用hperf时，尽量使用-c选项指定CPU核，这样hperf测量的性能数据更具代表性。  
+若不使用-c选项，Workload运行时将不会绑核，且hperf将输出全部CPU核心的性能指标。
 
 ### 实际使用案例
 待填。
