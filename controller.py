@@ -85,11 +85,6 @@ class Controller:
         """
         self.profiler = Profiler(self.connector, self.configs)
         self.profiler.profile()
-    
-    # TODO: this method can be subsituted by adjusting the level of 'logging.basicConfig'
-    # def __print_profile_cmd__(self):
-    #     self.profiler = self.__get_profiler__()
-    #     print(self.profiler.__profile_cmd__())
 
     def __analyze(self):
         self.analyzer = Analyzer(self.connector, self.configs)

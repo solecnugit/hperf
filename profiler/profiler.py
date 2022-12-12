@@ -17,7 +17,8 @@ class Profiler:
         self.configs = configs
         # event_groups = EventGroup(configs["metrics"], connector)
         # self.event_groups = event_groups.get_event_groups()
-        self.event_groups = "cycles:D,instructions:D,ref-cycles:D,'{r8D1,r10D1}','{rc4,rc5}'"
+        self.event_groups = EventGroup(connector)
+        # self.event_groups = "cycles:D,instructions:D,ref-cycles:D,'{r8D1,r10D1}','{rc4,rc5}'"
         # self.tmp_dir = configs["tmp_dir"]
         # self.cpu_list = configs["cpu_list"]
         # self.pid = configs["pid"]
@@ -37,7 +38,7 @@ class Profiler:
         script += f'TMP_DIR={self.connector.get_test_dir_path()}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
-        script += f'3>"$perf_result" perf stat -e {self.event_groups} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
+        script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
         logging.debug("profiling script: \n" + script)
         return script
