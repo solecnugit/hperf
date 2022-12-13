@@ -36,7 +36,7 @@ hperf的特性列举如下：
 python hperf.py <command> [options]
 ```
 #### python hperf.py
-hperf程序名。
+调用python运行hperf.py脚本文件。hperf.py是hperf的启动脚本。
 
 #### \<command>
 需要进行性能监测的Workload启动命令，例如：
@@ -55,21 +55,20 @@ hperf命令行语法规定，\<command>是必选项，使用hperf必须指定act
 |-f \|--config-file\[开发中]|指定Json文件路径，其中包含hperf设置选项|
 |-t \| --time|指定性能监测的时间（秒）|
 |-v \| --verbose| 过滤冗余的log信息|
-|-c \| --cpu|指定Workload运行的CPU核，默认为所有CPU核|
+|-c \| --cpu|指定hperf监测的的CPU核心，默认为所有CPU核|
 |--tmp-dir|指定存放原始性能数据的目录，默认为/tmp/hperf/|
 
 > 若不加入-r \| --remote选项，hperf将会在本地机器执行性能监测任务。
 > 若指定--tmp-dir，hperf将会对该目录进行权限检查。未通过检查则会自动将该目录改为/tmp/hperf/。
 ### 性能指标测量
-根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。目前hperf可以输出除L3Cache Missrate以外的其他全部性能指标。
-除去性能指标外，hperf也会向用户输出原始的性能事件信息。
+根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。
 
 ### 推荐使用案例
 ```bash
 python hperf.py -c 5 -v --tmp-dir ~/hperf/logs/ taskset -c 5 ./a.out 
 ```
 
-在如上所示bash代码中，我们启动hperf获取a.out程序运行的性能数据。hperf将该进程绑定在CPU5运行，忽略冗余的log信息，并且设置hperf存放原始数据文件的目录。
+在如上所示bash代码中，我们启动hperf获取a.out程序运行的性能数据。使用将该进程（a.out）绑定在CPU5上运行，忽略冗余的log信息，并且设置hperf存放原始数据文件的目录。
 > 我们推荐使用hperf时，尽量使用-c选项指定CPU核，这样hperf测量的性能数据更具代表性。同时在\<command>中使用taskset指定Workload运行的CPU核心。
 
 ### 实际使用案例
