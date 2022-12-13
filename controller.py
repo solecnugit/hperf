@@ -89,8 +89,3 @@ class Controller:
         self.analyzer = Analyzer(self.connector, self.configs, self.event_groups)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
 
-    def __clear__(self):
-        """
-        remove all tmp files and kill perf(sometimes perf will not killed by the script.)
-        """
-        self.profiler.clear()
