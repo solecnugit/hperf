@@ -109,7 +109,5 @@ class Controller:
 
     
 
-    
-
     def __get_analyzer__(self) -> Analyzer:
         pass
