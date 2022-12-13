@@ -61,8 +61,7 @@ hperf命令行语法规定，\<command>是必选项，使用hperf必须指定act
 > 若不加入-r \| --remote选项，hperf将会在本地机器执行性能监测任务。
 > 若指定--tmp-dir，hperf将会对该目录进行权限检查。未通过检查则会自动将该目录改为/tmp/hperf/。
 ### 性能指标测量
-根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。
-
+根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。hperf将会输出这些性能指标与聚合后的性能事件数据。
 ### 推荐使用案例
 ```bash
 python hperf.py -c 5 -v --tmp-dir ~/hperf/logs/ taskset -c 5 ./a.out 
