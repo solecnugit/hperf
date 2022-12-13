@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Sequence
+from typing import Sequence, Union
 import subprocess
 import os
 import logging
@@ -44,10 +44,11 @@ class Connector:
         """
         pass
 
-    def run_command(self, command_args: Sequence[str]) -> str:
+    def run_command(self, command_args: Union[Sequence[str], str]) -> str:
         """
         Run a command on SUT, then return the returned value of executing the command.
-        :param command_args: a sequence of program arguments, e.g. ["ls", "/home"]
+        :param command_args: a sequence of program arguments, e.g. ["ls", "/home"], 
+        or just a string of command line, e.g "ls /home"
         :return: the returned value of executing the command
         """
         pass
@@ -161,14 +162,16 @@ class LocalConnector(Connector):
         logging.debug(f"generate script: {script_path}")
         return script_path
 
-    def run_command(self, command_args: Sequence[str]) -> str:
+    def run_command(self, command_args: Union[Sequence[str], str]) -> str:
         """
         Run a command on SUT, then return the stdout output of executing the command.
         :param command_args: a sequence of program arguments, e.g. ["ls", "/home"]
         :return: stdout output
         """
-        output = subprocess.Popen(
-            command_args, stdout=subprocess.PIPE).communicate()[0]
+        if isinstance(command_args, list):
+            output = subprocess.Popen(command_args, stdout=subprocess.PIPE).communicate()[0]
+        else:
+            output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
         return output
 
     # def get_result(self) -> str:

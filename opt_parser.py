@@ -42,39 +42,30 @@ class OptParser:
         # [-v/--verbose]
         self.parser.add_argument("-v", "--verbose",
                                  action="store_true",
-                                 help="increase output verbosity")
+                                 help="increase output verbosity.")
 
-        # TODO: add more options
-
-        # [--config FILE_PATH]
-        self.parser.add_argument("-f", "--config-file",
-                                 metavar="FILE_PATH",
+        # [--cpu CPU]
+        # hperf will conduct a system-wide profiling so that the list will not affect performance data collection
+        # but will affect the aggregation of raw performance data.
+        # If not specified, 'Analyzer' will aggregate performance data of all cpus.
+        self.parser.add_argument("-c", "--cpu",
+                                 metavar="CPU_ID_LIST",
                                  type=str,
-                                 help="specify a configuration file with JSON format.")
-        # [--time SECOND]
-        self.parser.add_argument("-t", "--time",
-                                 metavar="SECOND",
-                                 type=int,
-                                 help="time of profiling (s).")
+                                 default="all",
+                                 help="specify the scope of performance data aggregation by passing a list of cpu ids.")
 
-        # [--pid PID]: Specify a process to monitor by PID.
-        # self.parser.add_argument("-p", "--pid",
-        #                          metavar="PID",
+        # TODO: add more options in future
+        # [--config FILE_PATH]
+        # self.parser.add_argument("-f", "--config-file",
+        #                          metavar="FILE_PATH",
         #                          type=str,
-        #                          help="pid of the process that hperf profile.")
-        # [--cpu CPU]: Specify a list of cpu ids.
-        # hperf will conduct a system-wide profiling so that the list will only affect the output.
-        # If not specified, it will output performance data of all cpus.
-        # self.parser.add_argument("-c",
-        #                          "--cpu",
-        #                          help="specify a list of cpu ids to profile.")
-
-        # self.parser.add_argument("--metrics", type=str,
-        #                          help="metrics you want to profile.")
-        # self.parser.add_argument(
-        #     "--port", type=int, help="the remote ssh port")
-        # self.parser.add_argument(
-        #     "--nmi", help="Whether to turn off NMI watchdog.", action="store_true")
+        #                          help="specify a configuration file with JSON format.")
+        # [--time SECOND]
+        # current workaround: COMMAND = sleep n
+        # self.parser.add_argument("-t", "--time",
+        #                          metavar="SECOND",
+        #                          type=int,
+        #                          help="time of profiling (s).")
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
@@ -85,22 +76,23 @@ class OptParser:
         configs = {}
 
         args = self.parser.parse_args(argv)
-        # TODO: for future implementation: if -f/--config-file option is specified, 
+        # TODO: for future implementation: if -f/--config-file option is specified,
         # load the JSON file and initialize config dict
         # if args.config:
         #     with open(args.config) as f:
         #         configs.update(json.load(f))
         # parse other options and arguments and update config dict
         # config specified in command line will overwrite the config defined in JSON file
-        
+
         # step 0. check verbosity
         if args.verbose:
             # option 'force' is needed, otherwise the level will not changed.
-            logging.basicConfig(format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.DEBUG, force=True)
-        
+            logging.basicConfig(
+                format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.DEBUG, force=True)
+
         logging.debug(
             f"options and arguments passed from command line: {args}")
-        
+
         # step 1. workload command
         if args.command:
             configs["command"] = " ".join(args.command)
@@ -110,26 +102,51 @@ class OptParser:
             configs["host_type"] = "remote"
             remote_configs = self.__parse_remote_str(args.remote)
             configs.update(remote_configs)
-            # if args.port:
-            #     configs["port"] = args.port
         else:
             configs["host_type"] = "local"
 
-        # if args.pid:
-        #     configs["pid"] = args.pid
-        # if args.cpu:
-        #     configs["cpu_list"] = args.cpu
+        # step 3. scope of performance data aggregation
+        if args.cpu != "all":
+            configs["cpu_list"] = self.__parse_cpu_list(args.cpu)
+        else:
+            configs["cpu_list"] = "all"
 
-        # step 3. temporary directory
+        # step 4. temporary directory
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
-
-        # if args.metrics:
-        #     configs["metrics"] = args.metrics
 
         logging.debug(f"parsed configurations: {configs}")
 
         return configs
+
+    def __parse_cpu_list(self, cpu_list: str) -> list:
+        """
+        Parse the cpu list string with comma (,) and hyphen (-), and get the list of cpu ids.
+        e.g. if cpu_list = '2,4-8', the method will return [2, 4, 5, 6, 7, 8]
+        """
+        cpu_ids = []
+        cpu_id_slices = cpu_list.split(",")
+        try:
+            for item in cpu_id_slices:
+                if item.find("-") == -1:
+                    cpu_ids.append(int(item))
+                else:
+                    start_cpu_id = int(item.split("-")[0])
+                    end_cpu_id = int(item.split("-")[1])
+                    for i in range(start_cpu_id, end_cpu_id + 1):
+                        cpu_ids.append(i)
+        except ValueError:
+            logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+            exit(-1)
+        reduced_cpu_ids = list(set(cpu_ids))
+        reduced_cpu_ids.sort(key=cpu_ids.index)
+        
+        # check if all cpu ids are vaild (not negative)
+        for cpu_id in reduced_cpu_ids:
+            if cpu_id < 0:
+                logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+                exit(-1)
+        return reduced_cpu_ids
 
     def __parse_remote_str(self, ssh_conn_str: str) -> dict:
         """
