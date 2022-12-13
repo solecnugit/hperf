@@ -142,3 +142,6 @@ cython_debug/
 
 # hperf temporary directory
 tmp/
+
+# vscode project directory
+.vscode/
