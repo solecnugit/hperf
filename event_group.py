@@ -31,13 +31,25 @@ class EventGroup:
         Determine the architecture of the SUT by analyzing the output of 'lscpu' command.
         :return: a string of architecture
         """
-        processor = self.connector.run_command("lscpu | grep 'Model name' | awk -F: '{print $2}'").strip().decode("utf-8")
+        processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip().decode("utf-8")
         logging.debug(f"processor model: {processor}")
         # TODO: the following logic is simple, it should be refined in future
         if processor.find("Intel") != -1:
-            arch = "intel_icelake"
+            # determine the microarchitecture code of intel processor by lscpu 'Model'
+            model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip().decode("utf-8")
+            try:
+                model = int(model)
+                if model == 106:
+                    arch = "intel_icelake"
+                elif model == 85:
+                    arch = "intel_cascadelake"
+                else:
+                    arch = "intel_cascadelake"
+            except ValueError:
+                logging.warning(f"unrecongized Intel processor model: {model}, assumed as intel_cascadelake")
+                arch = "intel_cascadelake"
         else:
-            arch = "intel_cascadelake"
+            arch = "arm"
         return arch
     
     def get_event_groups_str(self) -> str:

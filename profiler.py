@@ -43,14 +43,3 @@ class Profiler:
 
         logging.debug("profiling script: \n" + script)
         return script
-    
-    def result_output(self):
-        result = self.connector.get_result()
-        print("perf_result:")
-        print(result)
-
-    def err_output(self):
-        print("perf_err:")
-
-    def clear(self):
-        self.connector.clear()

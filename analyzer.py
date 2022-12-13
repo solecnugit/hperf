@@ -30,15 +30,26 @@ class Analyzer:
     def get_aggregated_metrics(self, to_csv: bool = False) -> pd.DataFrame:
         """
         """
-        # aggregate performance data for the whole measurement
+        # aggregate performance data for the whole measurement (aggregate 'timestamp')
+        # timestamp | unit | value | metric -> unit | metric | result
         event_per_cpu = self.raw_data.groupby(["unit", "metric"]).agg(
             result=("value", np.sum)
         )
 
-        # if configs["cpu_list"] == 'all'
-
-        cpu_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
-        scoped_event_per_cpu = event_per_cpu.loc[cpu_list, :].reset_index()
+        # aggregate performance data for selected cpus (aggregate 'unit')
+        if self.configs["cpu_list"] == 'all':
+            scoped_event_per_cpu = event_per_cpu.reset_index()
+            # unit | metric | result -> metric | result
+            scoped_event_per_cpu = scoped_event_per_cpu.groupby(["metric"]).agg(
+                result=("result", np.sum)
+            ).reset_index()
+        else:
+            cpu_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
+            scoped_event_per_cpu = event_per_cpu.loc[cpu_list, :].reset_index()
+            # unit | metric | result -> metric | result
+            scoped_event_per_cpu = scoped_event_per_cpu.groupby(["metric"]).agg(
+                result=("result", np.sum)
+            ).reset_index()
 
         mapping_perf_name_to_name = {}
         for item in self.event_groups.events:
@@ -67,8 +78,9 @@ class Analyzer:
         scoped_event_per_cpu = pd.concat([scoped_event_per_cpu, pd.DataFrame(metric_results)], ignore_index=True)
 
         if to_csv:
-            # TODO: save DataFrame to a CSV file
-            logging.info("save DataFrame to CSV file")
+            results_path = os.path.join(self.connector.get_test_dir_path(), "results.csv")
+            scoped_event_per_cpu.to_csv(results_path, header=True)
+            logging.info(f"save DataFrame to CSV file: {results_path}")
         return scoped_event_per_cpu
 
 
