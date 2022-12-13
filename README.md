@@ -1,74 +1,149 @@
 # hperf
 
-## 概述
+hperf（Hierarchical Performance Profiling Tools）是一个在Linux操作系统上跨指令集架构的微架构性能数据采集工具，可用于工作负载的微架构层面的特征分析，其特征在于：
 
-跨平台的微架构性能数据采集工具hperf
+- 高效地收集工作负载运行时微架构层面各组件的性能数据，包括指令流水线、缓存、分支预测等方面；
+- 输出可靠的、容易被消化的微架构性能指标，提供全面的工作负载性能画像，以期发现工作负载的性能优化机会。
 
-> 本文档标注\[开发中]的功能，将在未来版本中得到支持。
+## 背景
 
-### 命名
+hperf的是基于Linux perf开发的，其本质相当于在perf之上做了一层封装，其目的在于：
 
-hperf的名称取自Hierarchical Performance Profiling Tools，使用一种层次化的性能数据采集方法以及性能分析方法，Hierarchical具体体现在：
+- 调用perf收集全面的微架构性能数据，需要用户了解不同处理器微架构需要采集的性能事件。hperf在此之上做了泛化（generalization）以实现跨平台的支持，使用hperf则可以不关心不同微架构下性能事件的差异，获得统一微架构性能指标；
+- 调用perf高效地、可靠地收集的微架构性能数据，需要用户了解不同微架构的性能监测单元（Performance Monitoring Unit，PMU）的架构，特别是包含的性能事件计数器（Performance Monitoring Counter，PMC）的种类与数量；还需要理解需要的性能事件数量大于可用的PMC数量时，如何利用Linux perf_event子系统对性能事件的调度机制，以实现更高效地调度，同时确保导出的可靠的性能指标。这对用户的特定领域知识提出了较高要求，因此hperf封装了各平台相应的测量方案，用户不必了解内部细节，能够直接通过hperf获得相应的性能指标。
 
-- 收集软硬件全栈各个层次的性能数据，从微架构层面的PMU性能数据到系统软件层面的操作系统性能数据，提供全面的工作负载性能画像
-- 使用层次化的性能分析方法，逐层分解并定位到性能瓶颈
+hperf能够通过简单的命令行调用，输出工作负载的微架构性能事件，相较于Linux perf，选项更少、命令更加简单，用户能够快速上手使用。
 
-### 性能数据来源
+## 安装
 
-hperf的性能数据来源包括底层PMU（核内部分与核外部分），操作系统，上层工作负载（包括benchmark与real-workload），各部分具有代表性的性能数据如下图所示：
+首先从代码仓库克隆hperd的源代码。
 
-![性能数据来源](docs/img/perf_data_source.png "性能数据来源")
+hperf是使用Python开发的，并不需要执行特定的安装程序，当前版本的依赖项有：
 
-> 目前工具还是主要关注PMU层面的微架构性能数据，OS层面的性能数据目前主要依靠perf的软件性能事件获得一些OS内核部分的统计数据。
+* 数据处理：
+    * numpy
+    * pandas
+* 远程SSH连接：
+    * paramiko
 
-### 特性
+用户可以使用Python的包管理工具（pip或Anaconda）使得当前系统的Python环境能够导入相应的依赖包。
 
-hperf的特性列举如下：
+代码仓库中的`requirements.txt`文件记录了相关依赖项，以Anaconda为例，可以使用下述命令创建并激活环境：
 
-- 跨平台：支持主流平台，x86架构的Intel与AMD，ARM架构的Kunpeng与Ampere，并且可扩展，甚至拓展至RISC-V平台
-- 准确、可靠的微架构性能数据采集：基于对主流底层PMU架构与Linux perf_event子系统调度机制的深入理解上，通过时分复用底层硬件计数器的方式，有效地采集充足的性能事件，设置性能事件组使得关联性能事件在同一时刻测量，保证导出指标的可靠性与准确性
-- 跨平台的性能分析方法：通过采集得到的可靠的微架构性能数据，基于Iron Law对CPI进行逐层分解，给出微架构各个组件对性能的影响，以定位性能瓶颈
-- 可视化图表支持（开发中）：hperf将会收集时间粒度更加细腻的性能数据信息，自动聚合性能数据，并基于时间关系展现可视化图表，帮助用户更加准确认知Workload的性能特征。
-
-## 设计
-### hperf命令行语法 
-```bash
-python hperf.py <command> [options]
 ```
-#### python hperf.py
-调用python运行hperf.py脚本文件。hperf.py是hperf的启动脚本。
-
-#### \<command>
-需要进行性能监测的Workload启动命令，例如：
-```bash
-sleep 5 
-./602_gcc 
-ls | grep hellworld
-```
-hperf命令行语法规定，\<command>是必选项，使用hperf必须指定action。
-
-#### \[options]
-|  选项     | 描述 |
-| :-----------: | :-----------: |
-| -h \|--help      |  显示hperf帮助信息      |
-| -r \|--remote \[开发中]   | 指定hperf监测远程机器性能数据，在该选项后应指定SSH连接串 |
-|-f \|--config-file\[开发中]|指定Json文件路径，其中包含hperf设置选项|
-|-t \| --time|指定性能监测的时间（秒）|
-|-v \| --verbose| 过滤冗余的log信息|
-|-c \| --cpu|指定hperf监测的的CPU核心，默认为所有CPU核|
-|--tmp-dir|指定存放原始性能数据的目录，默认为/tmp/hperf/|
-
-> 若不加入-r \| --remote选项，hperf将会在本地机器执行性能监测任务。
-> 若指定--tmp-dir，hperf将会对该目录进行权限检查。未通过检查则会自动将该目录改为/tmp/hperf/。
-### 性能指标测量
-根据Iron Law模型，对CPI逐层分解需要CPI，L1Cache Missrate， L2Cache Missrate，L3Cache Missrate，Branch Predictor Missrate。hperf将会输出这些性能指标与聚合后的性能事件数据。
-### 推荐使用案例
-```bash
-python hperf.py -c 5 -v --tmp-dir ~/hperf/logs/ taskset -c 5 ./a.out 
+$ conda create --name hperf_env --file requirements.txt
+$ conda activate hperf_env
 ```
 
-在如上所示bash代码中，我们启动hperf获取a.out程序运行的性能数据。使用将该进程（a.out）绑定在CPU5上运行，忽略冗余的log信息，并且设置hperf存放原始数据文件的目录。
-> 我们推荐使用hperf时，尽量使用-c选项指定CPU核，这样hperf测量的性能数据更具代表性。同时在\<command>中使用taskset指定Workload运行的CPU核心。
+除此之外，由于hperf需要调用perf进行性能剖析任务，因此需要保证待测机器已经安装perf，能够从命令行执行`perf`命令。
 
-### 实际使用案例
-待填。
+由于perf是Linux内核工具的一部分，perf的版本与内核版本一致，对于较新的机器，推荐将内核升级至较高的版本。
+
+## 使用方法
+
+在代码仓库中，`hperf.py`是hperf的入口，因此使用hperf的方法是：
+
+```
+$ python hperf.py [options] <command> 
+```
+
+其中`[options]`是可选的选项，`<command>`是必要的参数，表示执行工作负载的命令。
+
+### 测量
+
+hperf会在工作负载执行的过程，对待测机器的整个系统进行测量，换言之会收集整个系统所有处理器的性能数据。
+
+当工作负载启动时，hperf即开始进行性能监测，当工作负载结束运行时，hperf停止性能监测。
+
+对于那些持续运行的真实应用，例如服务器上持续运行的Redis数据库服务等，如果需要对真实应用测量一段时间，可以在工作负载正常运行的时候，将`sleep <n>`作为工作负载，其中`<n>`是测量的事件（单位为s）。
+
+当前版本的hperf支持的微架构性能指标：
+
+* 基础性能指标
+    * CPU利用率
+    * 每条指令平均时钟周期（CPI）
+* 缓存
+    * 每千条指令L1缓存未命中次数（L1 CACHE MPKI）
+    * 每千条指令L2缓存未命中次数（L2 CACHE MPKI）
+    * 每千条指令L3缓存未命中次数（L3 CACHE MPKI）
+* 分支预测
+    * 分支预测错误率（BRANCH MISS RATE）
+
+### 支持的选项
+
+当前版本的hperf支持的选项：
+
+| 选项                  | 描述                    |
+| :-------------------: | :--------------------: |
+| `-h` \| `--help`      | 显示hperf帮助信息，包括支持的选项以及用法 |
+| `--tmp-dir`            | 指定临时文件夹的目录，用于存放用于性能分析的脚本以及对应输出结果、日志文件、原始性能数据、结果文件等，若不声明则默认为`/tmp/hperf/` |
+| `-v` \| `--verbose`   | 显示DEBUG信息，若不声明则默认不输出 |
+| `-c` \| `--cpu`       | 指定性能指标的聚合范围，用处理器ID的列表声明，列表可以使用连词符（`-`）与逗号（`,`），例如`5-8,9,10` |
+
+### 案例
+
+#### 单线程或多线程程序的工作负载特征分析
+
+对于一个矩阵乘法的可执行文件，其路径为`./test/mat_mul`，运行时需要传入一个参数，使用hperf测量其运行时的微架构性能指标，其中临时文件夹指定为当前目录下的`./tmp/`，那么调用hperf的命令为：
+
+```
+$ python hperf.py --tmp-dir ./tmp -c 5 taskset -c 5 ./test/mat_mul 128
+```
+
+其中，由于`mat_mul`程序是绑在5号处理器上运行的，尽管hperf是对整个系统进行测量的，但分析时仅需要用到5号处理器上收集的性能数据，因此使用选项`-c 5`。
+
+执行该命令后，应当会显示如下的输出结果：
+
+```
+2022-12-13 16:32:17,226 INFO     hperf v1.0.0
+2022-12-13 16:32:17,226 INFO     test directory: /home/tongyu/project/hperf/tmp/20221213_test006
+2022-12-13 16:32:17,288 INFO     start profiling
+2022-12-13 16:32:43,874 INFO     end profiling
+2022-12-13 16:32:43,908 INFO     save DataFrame to CSV file: /home/tongyu/project/hperf/tmp/20221213_test006/results.csv
+              metric        result
+0           CPU TIME  2.654691e+04
+1             CYCLES  8.739400e+10
+2       INSTRUCTIONS  1.834493e+11
+3                TSC  7.680475e+10
+4           BRANCHES  1.051103e+10
+5      BRANCH MISSES  5.461876e+06
+6    L1 CACHE MISSES  4.168072e+09
+7    L2 CACHE MISSES  3.434293e+09
+8    L3 CACHE MISSES  3.709443e+08
+9   REFERENCE CYCLES  7.679803e+10
+10   CPU UTILIZATION  9.999126e-01
+11               CPI  4.763933e-01
+12     L1 CACHE MPKI  2.272057e+01
+13     L2 CACHE MPKI  1.872067e+01
+14     L3 CACHE MPKI  2.022054e+00
+15  BRANCH MISS RATE  5.196326e-04
+```
+
+从输出结果中可以获得本次测量存放相关文件的路径，用户可以查找相关目录的文件以了解性能剖析的执行过程以及中间文件与结果文件。
+
+对于多线程程序，类似的，也应当使用`taskset`或者`numactl`等命令绑定相应的处理器、NUMA节点或SOCKET，之后设置选项`-c`的参数为对应的处理器ID列表。
+
+#### 对于真实应用的工作负载特征分析
+
+对于真实的工作负载特征分析，应当首先启动工作负载，根据需要确定是否绑定处理器、NUMA节点或SOCKET。等工作负载已经完成启动之后，再调用hperf进行进行一段时间的性能检测。
+
+例如，对于redis-server服务，若绑定指定的4个处理器，可以使用：
+
+```
+$ taskset -c 1,3,5,7 ./redis-server
+```
+
+完成启动后，若希望使用hperf对该工作负载进行1分钟的分析，那么调用hperf的命令为：
+
+```
+$ python hperf.py -c 1,3,5,7 sleep 60
+```
+
+输出结果与上一个案例类似，因此不再赘述。
+
+## 开发者与联系方式
+
+hperf的主要开发者为：
+
+* 刘通宇 graysonliu@foxmail.com
+* 程奂仑 m13955972978_2@163.com
