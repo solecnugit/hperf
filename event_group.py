@@ -31,25 +31,40 @@ class EventGroup:
         Determine the architecture of the SUT by analyzing the output of 'lscpu' command.
         :return: a string of architecture
         """
+        isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip().decode("utf-8")
+        logging.debug(f"ISA: {isa}")
         processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip().decode("utf-8")
         logging.debug(f"processor model: {processor}")
         # TODO: the following logic is simple, it should be refined in future
-        if processor.find("Intel") != -1:
+        if isa == "x86_64":
+            if processor.find("Intel") != -1:
             # determine the microarchitecture code of intel processor by lscpu 'Model'
-            model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip().decode("utf-8")
-            try:
-                model = int(model)
-                if model == 106:
-                    arch = "intel_icelake"
-                elif model == 85:
+                model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip().decode("utf-8")
+                try:
+                    model = int(model)
+                    if model == 106:
+                        arch = "intel_icelake"
+                    elif model == 85:
+                        arch = "intel_cascadelake"
+                    else:
+                        arch = "intel_cascadelake"
+                except ValueError:
+                    logging.warning(f"unrecongized Intel processor model: {model}, assumed as intel_cascadelake")
                     arch = "intel_cascadelake"
-                else:
-                    arch = "intel_cascadelake"
-            except ValueError:
-                logging.warning(f"unrecongized Intel processor model: {model}, assumed as intel_cascadelake")
-                arch = "intel_cascadelake"
+            elif processor.find("AMD") != -1:
+                arch = "amd"
+                logging.error(f"currently hperf does not support AMD processor: {model}")
+            else:
+                logging.error(f"unrecongized processor model: {model}")
+                exit(-1)
+        elif isa == "aarch64":
+            if processor.find("Kunpeng") != -1:
+                arch = "arm_kunpeng"
+            else:
+                arch = "arm"
         else:
-            arch = "arm"
+            logging.error(f"unsupported ISA: {isa}")
+            exit(-1)
         return arch
     
     def get_event_groups_str(self) -> str:
