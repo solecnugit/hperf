@@ -7,7 +7,8 @@ events = [
     {
         "id": 1,
         "perf_name": "duration_time",
-        "name": "WALL CLOCK TIME"
+        "name": "WALL CLOCK TIME",
+        "type": "system"
     },
     {
         "id": 20,

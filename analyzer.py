@@ -30,6 +30,16 @@ class Analyzer:
     def get_aggregated_metrics(self, to_csv: bool = False) -> pd.DataFrame:
         """
         """
+        # rename 'unit' according to self.event_groups.events[..]['type']
+        # e.g. 'duration_time' is a system-wide event, where in each timestamp there is only a value (attribute to CPU0)
+        # timestemp | unit | value | metric         -> timestemp | unit   | value | metric
+        # 1.0000    | CPU0 | 1.001 | duration_time     1.0000    | system | 1.001 | duration_time
+        # 1.0000    | CPU0 | 12345 | cycles            1.0000    | CPU0   | 12345 | cycles
+        # 1.0000    | CPU1 | 23456 | cycles            1.0000    | CPU1   | 23456 | cycles
+        # ...
+        # for item in self.event_groups.events:
+        #     if "type" in item:
+        
         # aggregate performance data for the whole measurement (aggregate 'timestamp')
         # timestamp | unit | value | metric -> unit | metric | result
         event_per_cpu = self.raw_data.groupby(["unit", "metric"]).agg(
