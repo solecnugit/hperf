@@ -37,8 +37,9 @@ class Analyzer:
         # 1.0000    | CPU0 | 12345 | cycles            1.0000    | CPU0   | 12345 | cycles
         # 1.0000    | CPU1 | 23456 | cycles            1.0000    | CPU1   | 23456 | cycles
         # ...
-        # for item in self.event_groups.events:
-        #     if "type" in item:
+        for item in self.event_groups.events:
+            if "type" in item:
+                self.raw_data.loc[self.raw_data.metric == item["perf_name"], ["unit"]] = "system"
         
         # aggregate performance data for the whole measurement (aggregate 'timestamp')
         # timestamp | unit | value | metric -> unit | metric | result
@@ -55,6 +56,7 @@ class Analyzer:
             ).reset_index()
         else:
             cpu_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
+            cpu_list.append("system")
             scoped_event_per_cpu = event_per_cpu.loc[cpu_list, :].reset_index()
             # unit | metric | result -> metric | result
             scoped_event_per_cpu = scoped_event_per_cpu.groupby(["metric"]).agg(

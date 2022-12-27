@@ -64,7 +64,7 @@ event_groups = [
 metrics = [
     {
         "metric": "CPU UTILIZATION",
-        "expression": "e0 / e1"
+        "expression": "e0 / (e1 / 1000000)"
     },
     {
         "metric": "CPI",
