@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <assert.h>
-#define n 4096
+#define n 2048
 
 double A[n][n];
 double B[n][n];
@@ -20,7 +20,7 @@ int main(int argc, const char *argv[])
 	int i,j,ih,jh,kh,il,kl,jl;
     assert(argc == 2);
     int s = atoi(argv[1]);
-    if (s < 1 || s > 4096)
+    if (s < 1 || s > 2048)
 	{
         printf("Invalid input values.\n");
         return -1;

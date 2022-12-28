@@ -36,11 +36,6 @@ events = [
         "name": "L2 CACHE MISSES"
     },
     {
-        "id": 34,
-        "perf_name": "r2a",
-        "name": "L3 CACHE MISSES"
-    },
-    {
         "id": 35,
         "perf_name": "r21",
         "name": "BRANCHES"
@@ -57,8 +52,7 @@ other_events = [0, 1]
 pinned_events = [20]
 
 event_groups = [
-    [30, 31, 32, 33, 34],
-    [35, 36]
+    [30, 31, 32, 33, 35, 36]
 ]
 
 metrics = [
@@ -81,10 +75,6 @@ metrics = [
     {
         "metric": "L2 CACHE MPKI",
         "expression": "(1000 * e33) / e30"
-    },
-    {
-        "metric": "L3 CACHE MPKI",
-        "expression": "(1000 * e34) / e30"
     },
     {
         "metric": "BRANCH MISS RATE",
