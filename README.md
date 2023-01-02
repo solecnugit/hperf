@@ -28,10 +28,10 @@ hperf是使用Python开发的，并不需要执行特定的安装程序，当前
 
 用户可以使用Python的包管理工具（pip或Anaconda）使得当前系统的Python环境能够导入相应的依赖包。
 
-代码仓库中的`requirements.txt`文件记录了相关依赖项，以Anaconda为例，可以使用下述命令创建并激活环境：
+代码仓库中的`environment.yml`文件记录了相关依赖项，以Anaconda为例，可以使用下述命令创建并激活环境：
 
 ```
-$ conda create --name hperf_env --file requirements.txt
+$ conda env create --file environment.yml
 $ conda activate hperf_env
 ```
 
