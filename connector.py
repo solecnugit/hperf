@@ -4,7 +4,7 @@ import subprocess
 import os
 import logging
 import re
-from paramiko import SSHClient, SFTPClient, AutoAddPolicy
+# from paramiko import SSHClient, SFTPClient, AutoAddPolicy
 
 
 class Connector:
