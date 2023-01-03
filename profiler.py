@@ -16,20 +16,51 @@ class Profiler:
         """
         self.connector = connector
         self.configs = configs
-        # event_groups = EventGroup(configs["metrics"], connector)
-        # self.event_groups = event_groups.get_event_groups()
         self.event_groups = event_groups
-        # self.event_groups = "cycles:D,instructions:D,ref-cycles:D,'{r8D1,r10D1}','{rc4,rc5}'"
-        # self.tmp_dir = configs["tmp_dir"]
-        # self.cpu_list = configs["cpu_list"]
-        # self.pid = configs["pid"]
 
     def profile(self):
+        """
+        Generate and execute profiling script.
+        """
         script = self.__get_profile_script()
         logging.info("start profiling")
         self.connector.run_script(script)
         logging.info("end profiling")
 
+    def sanity_check(self) -> bool:
+        """
+        Check the environment on the SUT for profiling.
+        Since the collection of performance data requires exclusive usage of PMCs, 
+        it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running. 
+        Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC, 
+        it should also be checked.
+        :return: if the SUT passes the sanity check, it will return True, 
+        else it will return False and record the information through 'logging'.
+        """
+        sanity_check_flag = True
+
+        # 1. check if there is any other profiler (such as VTune, perf, etc.) is already running
+        process_check_list = [
+            "linux-tools/.*/perf", 
+            "/intel/oneapi/vtune/.*/emon"
+        ]    # process command pattern
+        for process in process_check_list:
+            process_check_cmd = f"ps -ef | awk '{{print $8}}' | grep {process}"
+            output = self.connector.run_command(process_check_cmd)
+            if output:
+                process_cmd = output.decode("utf-8")
+                logging.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
+                sanity_check_flag = False
+        # 2. for x86_64 platform, check the NMI watchdog
+        if self.event_groups.isa == "x86_64":
+            nmi_watchdog_check_cmd = ["cat", "/proc/sys/kernel/nmi_watchdog"]
+            output = self.connector.run_command(nmi_watchdog_check_cmd)
+            if int(output) == 1:
+                logging.warning(f"sanity check: NMI watchdog is enabled.")
+                sanity_check_flag = False
+
+        return sanity_check_flag
+    
     def __get_profile_script(self) -> str:
         """
         Based on the parsed configuration, generate the string of shell script for profiling.
