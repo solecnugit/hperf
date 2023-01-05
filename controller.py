@@ -25,10 +25,10 @@ class Controller:
         self.configs = {}    # a dict contains parsed configurations for the following steps
         self.parser = OptParser()
 
-        self.connector = None    # an instance of 'Connector'
-        self.profiler = None    # an instance of 'Profiler'
-        self.analyzer = None    # an instance of 'Analyzer'
-        self.event_groups = None    # an instancce of 'EventGroup'
+        self.connector: Connector = None    # an instance of 'Connector'
+        self.profiler: Profiler = None    # an instance of 'Profiler'
+        self.analyzer: Analyzer = None    # an instance of 'Analyzer'
+        self.event_groups: EventGroup = None    # an instancce of 'EventGroup'
 
         # TODO: Set more configs for logging, such as the path of log file.
         logging.basicConfig(format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.INFO)
@@ -79,13 +79,28 @@ class Controller:
 
     def __profile(self):
         """
-        Generate and execute profiling script, then save the raw performance data in the temporary directory
+        Firstly run sanity check, then enerate and execute profiling script, where the raw performance data is saved in the temporary directory.
         """
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
+        if not self.profiler.sanity_check():
+            select = input("Detected some problems which may interfere profiling. Continue profiling? [y|N] ")
+            while True:
+                if select == "y" or select == "Y":
+                    break
+                elif select == "n" or select == "N":
+                    logging.info("Program exits.")
+                    exit(0)
+                else:
+                    select = input("Please select: [y|N] ")
+        else:
+            logging.info("sanity check passed.")
         self.profiler.profile()
 
     def __analyze(self):
+        """
+        Analyze the raw performance data, then output the report of performance metrics.
+        """
         self.analyzer = Analyzer(self.connector, self.configs, self.event_groups)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
 

@@ -15,8 +15,9 @@ class EventGroup:
         """
         self.connector = connector
 
+        self.isa = self.__get_isa()
+
         self.arch = self.__get_architecture()
-        logging.debug(f"architecture model: {self.arch}")
 
         # dynamic import event configurations based on the architecture of the SUT
         arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
@@ -26,17 +27,24 @@ class EventGroup:
         self.event_groups: list = getattr(arch_module, "event_groups")
         self.metrics: list = getattr(arch_module, "metrics")    
 
+    def __get_isa(self) -> str:
+        """
+        Determine the Instruction Set Architecture (ISA) of the SUT by analyzing the output of 'lscpu' command.
+        :return: a string of ISA, such as 'x86_64', 'aarch64', etc.
+        """
+        isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip().decode("utf-8")
+        logging.debug(f"ISA: {isa}")
+        return isa
+    
     def __get_architecture(self) -> str:
         """
         Determine the architecture of the SUT by analyzing the output of 'lscpu' command.
         :return: a string of architecture
         """
-        isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip().decode("utf-8")
-        logging.debug(f"ISA: {isa}")
         processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip().decode("utf-8")
         logging.debug(f"processor model: {processor}")
         # TODO: the following logic is simple, it should be refined in future
-        if isa == "x86_64":
+        if self.isa == "x86_64":
             if processor.find("Intel") != -1:
             # determine the microarchitecture code of intel processor by lscpu 'Model'
                 model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip().decode("utf-8")
@@ -57,14 +65,15 @@ class EventGroup:
             else:
                 logging.error(f"unrecongized processor model: {model}")
                 exit(-1)
-        elif isa == "aarch64":
+        elif self.isa == "aarch64":
             if processor.find("Kunpeng") != -1:
                 arch = "arm_kunpeng"
             else:
                 arch = "arm"
         else:
-            logging.error(f"unsupported ISA: {isa}")
+            logging.error(f"unsupported ISA: {self.isa}")
             exit(-1)
+        logging.debug(f"architecture model: {arch}")
         return arch
     
     def get_event_groups_str(self) -> str:
