@@ -47,6 +47,29 @@ $ python hperf.py [options] <command>
 
 where `[options]` is an optional option and `<command>` is a required argument indicating the command to execute the workload.
 
+### Pre-run environment check
+
+The purpose of the environment check of hperf for the SUT before performing measurements is to ensure that hperf has exclusive access to the hardware PMCs, which ensures the reliability and accuracy of microarchitecture performance data.
+
+The checks for the current version of hperf include: 
+
+* whether other profilers are already running, such as Intel VTune, perf, etc. (since performance profilers are highly likely to occupy PMCs)
+* whether the NMI watchdog has disabled for x86 architecture (because the NMI watchdog will occupy a generic PMC)
+
+If hperf checks for the above issues, it will prompt accordingly, at which point the command line will wait for the user to type in a command to determine whether to proceed with the measurement in such a case.
+
+For example, if the machine to be measured has VTune running at this point, then hperf will give the following output:
+
+```
+2023-01-05 15:24:52,767 INFO     hperf v1.0.0
+2023-01-05 15:24:52,767 INFO     test directory: /tmp/hperf/20230105_test003
+2023-01-05 15:24:52,937 WARNING  sanity check: process may interfere measurement exists. /opt/intel/oneapi/vtune/2023.0.0/bin64/emon
+
+Detected some problems which may interfere profiling. Continue profiling? [y|N] 
+```
+
+If the user types n/N, then hperf runs to the end; if the user types y/Y, then hperf will perform the measurement.
+
 ### Measurements
 
 hperf measures the entire system of the machine under test during workload execution, in other words it collects performance data for all processors of the entire system.
@@ -67,6 +90,8 @@ Options supported by the current version of hperf.
 | `-tmp-dir`            | specifies a temporary folder to store scripts for performance analysis and the corresponding output, log files, raw performance data, results files, etc. If not declared, the default is `/tmp/hperf/` |
 | `-v` \| `--verbose`   | show DEBUG information, if not declared, the default is not output |
 | `-c` \| `--cpu`       | specify the aggregated range of the performance metric, declared as a list of processor IDs, which can be concatenated (`-`) with a comma (`,`), e.g. `5-8,9,10` |
+
+Note: The `-c` option does not affect the measurement, only the processing of the raw performance data after the measurement.
 
 ### Cases
 
