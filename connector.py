@@ -9,7 +9,7 @@ import re
 
 class Connector:
     """
-    the Abstract class of all Connectors.
+    the Abstract class (interface) of all Connectors.
     'Connector' provides various useful method for executing commands or shell scripts.
     """
 

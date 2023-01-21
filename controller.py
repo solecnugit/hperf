@@ -12,7 +12,7 @@ class Controller:
     'Controller' is responsible for process control of hperf.
     Users can conduct profiling by calling 'hperf()' method after instantiate 'Controller'.
     """
-    VERSION = "v1.0.0"
+    VERSION = "v1.0.1"
 
     def __init__(self, argv: Sequence[str]):
         """
