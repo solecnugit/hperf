@@ -160,18 +160,21 @@ class OptParser:
         remote_configs = {}
         # parse the SSH connection string to get hostname and username
         try:
-            remote_configs["username"] = ssh_conn_str.split("@")[0]
-            remote_configs["hostname"] = ssh_conn_str.split("@")[1]
-        except IndexError:
+            # TODO: enhance the logic of parsing SSH connection string
+            remote_configs["username"]: str = ssh_conn_str.split("@")[0]
+            remote_configs["hostname"]: str = ssh_conn_str.split("@")[1]
+            if remote_configs["username"] == "" or remote_configs["hostname"] == "":
+                raise ValueError
+        except (IndexError, ValueError):
             logging.error(f"invalid SSH connection string: {ssh_conn_str}")
             exit(-1)
 
         # get the password by command line interaction
         remote_configs["password"] = getpass(f'connect to {remote_configs["hostname"]}, '
-                                             'enter the password for user {remote_configs["username"]}: ')
+                                             f'enter the password for user {remote_configs["username"]}: ')
 
         # TODO: other configurations may be used in future
-        remote_configs["port"] = 22
-        remote_configs["private_key"] = "~/.ssh/id_rsa"
+        # remote_configs["port"] = 22
+        # remote_configs["private_key"] = "~/.ssh/id_rsa"
 
         return remote_configs
