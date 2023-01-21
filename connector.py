@@ -165,7 +165,7 @@ class LocalConnector(Connector):
     def run_command(self, command_args: Union[Sequence[str], str]) -> str:
         """
         Run a command on SUT, then return the stdout output of executing the command.
-        :param command_args: a sequence of program arguments, e.g. ["ls", "/home"]
+        :param command_args: a sequence of program arguments, e.g. ["ls", "/home"], or a string of command, e.g. "ls /home"
         :return: stdout output
         """
         if isinstance(command_args, list):
@@ -174,40 +174,12 @@ class LocalConnector(Connector):
             output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
         return output
 
-    # def get_result(self) -> str:
-    #     ls_res = subprocess.Popen("cd {} && ls".format(self.tmp_dir), stdout=subprocess.PIPE, shell=True)
-    #     grep_res = subprocess.Popen("grep hperf_perf_re", stdin=ls_res.stdout, stdout=subprocess.PIPE, shell=True)
-    #     ls_res.stdout.close()
-    #     res = grep_res.stdout
-    #     result_path = res.read()
-    #     result_path = result_path.decode("utf-8")
-    #     result_path = result_path.strip()
-    #     result_path = self.tmp_dir + "/" + result_path
-    #     with open(result_path, 'r') as f:
-    #         result_lines = f.readlines()
-    #     result = ""
-    #     for line in result_lines:
-    #         result += line
-    #     return result
-
-    # def get_err(self) -> str:
-    #     return " "
-
-    # def clear(self):
-    #     subprocess.Popen("cd {} && rm hperf* && kill -2 $(pgrep perf)".format(self.tmp_dir), shell=True)
-
-    # TODO: undone.
-    # maybe it can be understood as a profiler to get static information on the SUT
-    # def get_cpu_architecture(self) -> str:
-    #     return "Icelake"
-
-    # TODO: undone.
-    # maybe it can be understood as a profiler to get static information on the SUT
-    # def runtime_check(self) -> bool:
-    #     pass
-
 
 class RemoteConnector(Connector):
+    """
+    'RemoteConnector' is extended from 'Connector'.
+    """
+
     def __init__(self, configs: dict) -> None:
         """
         Constructor of 'Connector'.
