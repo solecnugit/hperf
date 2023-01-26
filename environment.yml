@@ -5,6 +5,8 @@ name: hperf
 channels:
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.9
   - pandas
   - numpy
+  - paramiko
+  - cryptography=3.4.8
