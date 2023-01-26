@@ -101,6 +101,7 @@ class OptParser:
         if args.remote:
             configs["host_type"] = "remote"
             remote_configs = self.__parse_remote_str(args.remote)
+            # add keys: hostname, username, password
             configs.update(remote_configs)
         else:
             configs["host_type"] = "local"
