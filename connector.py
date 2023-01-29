@@ -376,5 +376,5 @@ class RemoteConnector(Connector):
         """
         for file in self.sftp.listdir(self.remote_tmp_dir):
             remote_file_path = os.path.join(self.remote_tmp_dir, file)
-            self.sftp.get(remote_file_path, self.get_test_dir_path)
+            self.sftp.get(remote_file_path, os.path.join(self.get_test_dir_path(), file))
             logging.info(f"get file from remote SUT: {remote_file_path}")
