@@ -1,4 +1,4 @@
-from connector import Connector
+from connector import Connector, LocalConnector, RemoteConnector
 from event_group import EventGroup
 import os
 import logging
@@ -14,9 +14,9 @@ class Profiler:
         :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
         :param event_group: an instance of 'EventGroup'
         """
-        self.connector = connector
-        self.configs = configs
-        self.event_groups = event_groups
+        self.connector: Connector = connector
+        self.configs: dict = configs
+        self.event_groups: EventGroup = event_groups
 
     def profile(self):
         """
@@ -66,8 +66,14 @@ class Profiler:
         Based on the parsed configuration, generate the string of shell script for profiling.
         :return: the string of shell script for profiling
         """
+        if isinstance(self.connector, LocalConnector):
+            perf_dir = self.connector.get_test_dir_path()
+        else:
+            self.connector: RemoteConnector
+            perf_dir = self.connector.remote_tmp_dir
+
         script = "#!/bin/bash\n"
-        script += f'TMP_DIR={self.connector.get_test_dir_path()}\n'
+        script += f'TMP_DIR={perf_dir}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'

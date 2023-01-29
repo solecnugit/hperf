@@ -26,11 +26,11 @@ hperf is developed using Python and does not require the execution of a specific
 
 The user can use Python's package management tools (pip or Anaconda) to enable the current system's Python environment to import the appropriate dependency packages.
 
-The `environment.yml` file in the code repository records the relevant dependencies, and in the case of Anaconda, the following command can be used to create and activate the environment.
+The `environment.yml` file in the code repository records the relevant dependencies, and in the case of Anaconda, the following command can be used to create and activate the environment named hperf.
 
 ```
 $ conda env create --file environment.yml
-$ conda activate hperf_env
+$ conda activate hperf
 ```
 
 In addition to this, since hperf needs to invoke perf for performance profiling tasks, you need to ensure that the machine to be tested has perf installed and can execute the `perf` command from the command line.

@@ -12,7 +12,7 @@ class Controller:
     'Controller' is responsible for process control of hperf.
     Users can conduct profiling by calling 'hperf()' method after instantiate 'Controller'.
     """
-    VERSION = "v1.0.0"
+    VERSION = "v1.0.1"
 
     def __init__(self, argv: Sequence[str]):
         """
@@ -59,6 +59,11 @@ class Controller:
         Based on the configuration dict, initialze a 'Connector' for 'Profiler' and 'Analyzer'.
         """
         self.configs = self.parser.parse_args(self.argv)
+        # if command is empty, exit the program
+        if "command" not in self.configs:
+            logging.error("workload is not specified")
+            exit(-1)
+
         self.connector = self.__get_connector()
 
     def __get_connector(self) -> Connector:
@@ -68,13 +73,10 @@ class Controller:
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
         # if the parsed temporary directory is invalid (cannot be accessed).
         if self.configs["host_type"] == "local":
-            logging.debug("SUT is local host")
+            logging.debug("SUT is on local host")
             return LocalConnector(self.configs)
         else:
-            logging.debug("SUT is remote host")
-            # TODO: 'RemoteConnect' has not been fully implemented, when it is ready, remove the follwing exit()
-            logging.error("RemoteConnector has not been implemented yet")
-            exit(-1)
+            logging.debug("SUT is on remote host")
             return RemoteConnector(self.configs)
 
     def __profile(self):
@@ -89,13 +91,18 @@ class Controller:
                 if select == "y" or select == "Y":
                     break
                 elif select == "n" or select == "N":
-                    logging.info("Program exits.")
+                    logging.info("program exits")
                     exit(0)
                 else:
-                    select = input("Please select: [y|N] ")
+                    select = input("please select: [y|N] ")
         else:
             logging.info("sanity check passed.")
         self.profiler.profile()
+        
+        # for RemoteConnector, close SSH / SFTP connection between remote SUT and local host
+        if isinstance(self.connector, RemoteConnector):
+            self.connector.sftp.close()
+            self.connector.client.close()
 
     def __analyze(self):
         """

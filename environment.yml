@@ -1,10 +1,12 @@
 # create environment: conda env create --file environment.yml
-# activate environment: conda activate hperf_env
-# remove environment: conda remove -n hperf_env --all
-name: hperf_env
+# activate environment: conda activate hperf
+# remove environment: conda remove -n hperf --all
+name: hperf
 channels:
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.9
   - pandas
   - numpy
+  - paramiko
+  - cryptography=3.4.8
