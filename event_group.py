@@ -32,7 +32,7 @@ class EventGroup:
         Determine the Instruction Set Architecture (ISA) of the SUT by analyzing the output of 'lscpu' command.
         :return: a string of ISA, such as 'x86_64', 'aarch64', etc.
         """
-        isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip().decode("utf-8")
+        isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip()
         logging.debug(f"ISA: {isa}")
         return isa
     
@@ -41,13 +41,13 @@ class EventGroup:
         Determine the architecture of the SUT by analyzing the output of 'lscpu' command.
         :return: a string of architecture
         """
-        processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip().decode("utf-8")
+        processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip()
         logging.debug(f"processor model: {processor}")
         # TODO: the following logic is simple, it should be refined in future
         if self.isa == "x86_64":
             if processor.find("Intel") != -1:
             # determine the microarchitecture code of intel processor by lscpu 'Model'
-                model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip().decode("utf-8")
+                model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip()
                 try:
                     model = int(model)
                     if model == 106:
