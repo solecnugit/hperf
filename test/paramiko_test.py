@@ -43,7 +43,11 @@ sftp.chdir("./.hperf/")
 print(sftp.getcwd())
 # sftp.remove("a")
 print(sftp.listdir())
-sftp.chdir()
-print(sftp.listdir())
+with sftp.open("b.txt", "w+") as f:
+    f.write("Hello,\nWorld\n")
+
+for file in sftp.listdir("."):
+    print(file)
+
 
 client.close()
