@@ -77,9 +77,6 @@ class Controller:
             return LocalConnector(self.configs)
         else:
             logging.debug("SUT is on remote host")
-            # TODO: 'RemoteConnect' has not been fully implemented, when it is ready, remove the follwing exit()
-            logging.error("RemoteConnector has not been implemented yet")
-            exit(-1)
             return RemoteConnector(self.configs)
 
     def __profile(self):
@@ -101,6 +98,11 @@ class Controller:
         else:
             logging.info("sanity check passed.")
         self.profiler.profile()
+        
+        # for RemoteConnector, close SSH / SFTP connection between remote SUT and local host
+        if isinstance(self.connector, RemoteConnector):
+            self.connector.sftp.close()
+            self.connector.client.close()
 
     def __analyze(self):
         """
