@@ -142,9 +142,9 @@ class LocalConnector(Connector):
         logging.debug(f"run script: {script_path}")
         process = subprocess.Popen(
             ["bash", f"{script_path}"], stdout=subprocess.PIPE)
-        returned_value = process.wait()
+        ret_code = process.wait()
         logging.debug(f"finish script: {script_path}")
-        return returned_value
+        return ret_code
 
     def __generate_script(self, script: str) -> str:
         """
@@ -168,6 +168,7 @@ class LocalConnector(Connector):
             output = subprocess.Popen(command_args, stdout=subprocess.PIPE).communicate()[0]
         else:
             output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
+        output = output.decode("utf-8")
         return output
 
 
@@ -234,11 +235,12 @@ class RemoteConnector(Connector):
         self.username: str = self.configs["username"]
         self.password: str = self.configs["password"]
         # TODO: the port of SSH is 22 by default. in future, the port can be specified explictly by command line option '-p'.
+        self.port: int = 22
 
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy)   # for the first connection
         try:
-            self.client.connect(self.host_name, self.port, self.user_name, self.password)
+            self.client.connect(self.hostname, self.port, self.username, self.password)
         except paramiko.BadHostKeyException:
             logging.error("the server's host key could not be verified")
             exit(-1)
@@ -275,7 +277,6 @@ class RemoteConnector(Connector):
         self.remote_tmp_dir = default_remote_tmp_dir
 
         logging.debug(f"remote temporary directory: {self.remote_tmp_dir}")
-
 
     def __find_test_id(self) -> str:
         """
@@ -320,7 +321,7 @@ class RemoteConnector(Connector):
             ret_code = stdout.channel.recv_exit_status()
             logging.debug(f"finished with exit code {ret_code}")
             if ret_code != 0:
-                raise RuntimeError
+                logging.debug(f"executing command {command} with an exit code of {ret_code}")
             else:
                 output = stdout.read().decode("utf-8")
                 logging.debug(f"stdout of command {command}: \n{output}")
@@ -334,4 +335,46 @@ class RemoteConnector(Connector):
             self.client.close()
             exit(-1)
     
-    
+    def run_script(self, script: str) -> int:
+        """
+        Create and run a script on SUT, then wait for the script finished.
+        :param script: the string of shell script
+        :return: the returned value of executing the shell script
+        """
+        # step 1. generate a script on remote SUT
+        remote_script_path = self.__generate_script(script)
+
+        # step 2. run the script by bash
+        logging.debug(f"run script on remote SUT: {remote_script_path}")
+        _, stdout, _ = self.client.exec_command(f"bash {remote_script_path}")
+        ret_code = stdout.channel.recv_exit_status()
+        logging.debug(f"finished with exit code {ret_code}")
+        if ret_code != 0:
+            logging.debug(f"executing script {remote_script_path} with an exit code of {ret_code}")
+        logging.debug(f"finish script: {remote_script_path}")
+
+        # step 3. pull files from remote SUT for following analyzing
+        self.__pull_remote()
+        
+        return ret_code
+
+    def __generate_script(self, script: str) -> str:
+        """
+        Generate a profiling script on the SUT.
+        :param script: the string of shell script
+        :return: path of the script on the SUT
+        """
+        remote_script_path = os.path.join(self.remote_tmp_dir, "perf.sh")
+        with self.sftp.open(remote_script_path, "w") as f:
+            f.write(script)
+        logging.debug(f"generate script in remote temporary directory: {remote_script_path}")
+        return remote_script_path
+
+    def __pull_remote(self):
+        """
+        Pull all files to the test directory (a sub-directory in local temporary directory) from remote temporary directory.
+        """
+        for file in self.sftp.listdir(self.remote_tmp_dir):
+            remote_file_path = os.path.join(self.remote_tmp_dir, file)
+            self.sftp.get(remote_file_path, self.get_test_dir_path)
+            logging.info(f"get file from remote SUT: {remote_file_path}")
