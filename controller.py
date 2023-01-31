@@ -1,4 +1,6 @@
 import logging
+import os
+from shutil import copyfile
 from typing import Sequence
 from opt_parser import OptParser
 from profiler import Profiler
@@ -30,21 +32,35 @@ class Controller:
         self.analyzer: Analyzer = None    # an instance of 'Analyzer'
         self.event_groups: EventGroup = None    # an instancce of 'EventGroup'
 
-        # TODO: Set more configs for logging, such as the path of log file.
-        logging.basicConfig(format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.INFO)
-        logging.info(f"hperf {Controller.VERSION}")    # show the version of hperf
+        # initialize Logger
+        # Note: Since Logger follows singleton pattern, it is unnecessary to pass the reference of the instance of Logger to other modules / classes.
+        # When we need to log records, use the method logging.getLogger(<name>) provided by module logging to get the instance of Logger,
+        # where it will get the very same instance of Logger as long as the <name> is same.
+        self.logger = logging.getLogger("hperf")
+        self.logger.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
 
-        # TODO: using global 'logging' instead of bringing in a reference of 'Logger' for convinience
-        # e.g. logging.debug("some message") / logging.warning("some message") / logging.error("some message")
+        # [1] for console output of logs
+        self.__handler_stream = logging.StreamHandler()
+        self.__handler_stream.setFormatter(formatter)
+        self.__handler_stream.setLevel(logging.INFO)    # logs with level above INFO will be printed to console by default
+        self.logger.addHandler(self.__handler_stream)
+
+        # [2] for file output of logs
+        self.log_file_path = "/tmp/hperf/hperf.log"
+        self.__handler_file = logging.FileHandler(self.log_file_path, "w")
+        self.__handler_file.setLevel(logging.DEBUG)    # all logs will be writen to the log file by default
+        self.__handler_file.setFormatter(formatter)
+        self.logger.addHandler(self.__handler_file)
 
     def hperf(self):
         """
         This method covers the whole process of profiling.
         """
+        self.logger.info(f"hperf {Controller.VERSION}")
+
         # Step 1. parse the original command line options and parameters
         self.__parse()
-        # TODO: If the '--verbose' or '-v' option declared, print corresponding command in console for debugging 
-        # by adjusting 'logging.basicConfig(level=...)'
 
         # Step 2. conduct profiling by executing script with 'perf stat ...' command
         # raw performance data will be saved in the temporary directory
@@ -52,6 +68,8 @@ class Controller:
 
         # Step 3. analyze the raw performance data and output realiable performance metrics
         self.__analyze()
+
+        self.__save_log_file()
     
     def __parse(self):
         """
@@ -59,11 +77,16 @@ class Controller:
         Based on the configuration dict, initialze a 'Connector' for 'Profiler' and 'Analyzer'.
         """
         self.configs = self.parser.parse_args(self.argv)
+
+        # if verbosity is declared, change the threshold of log level to print to console
+        if "verbose" in self.configs:
+            self.__handler_stream.setLevel(logging.DEBUG)
+        
         # if command is empty, exit the program
         if "command" not in self.configs:
-            logging.error("workload is not specified")
+            self.logger.error("workload is not specified")
             exit(-1)
-
+        
         self.connector = self.__get_connector()
 
     def __get_connector(self) -> Connector:
@@ -73,10 +96,10 @@ class Controller:
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
         # if the parsed temporary directory is invalid (cannot be accessed).
         if self.configs["host_type"] == "local":
-            logging.debug("SUT is on local host")
+            self.logger.debug("SUT is on local host")
             return LocalConnector(self.configs)
         else:
-            logging.debug("SUT is on remote host")
+            self.logger.debug("SUT is on remote host")
             return RemoteConnector(self.configs)
 
     def __profile(self):
@@ -91,12 +114,12 @@ class Controller:
                 if select == "y" or select == "Y":
                     break
                 elif select == "n" or select == "N":
-                    logging.info("program exits")
+                    self.logger.info("program exits")
                     exit(0)
                 else:
                     select = input("please select: [y|N] ")
         else:
-            logging.info("sanity check passed.")
+            self.logger.info("sanity check passed.")
         self.profiler.profile()
         
         # for RemoteConnector, close SSH / SFTP connection between remote SUT and local host
@@ -110,4 +133,17 @@ class Controller:
         """
         self.analyzer = Analyzer(self.connector, self.configs, self.event_groups)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
+
+    def __save_log_file(self):
+        """
+        Copy the log file from '/tmp/hperf/hperf.log' to the test directory for this run.
+        """
+        source = self.log_file_path
+        target = os.path.join(self.connector.get_test_dir_path(), "hperf.log")
+        try:
+            copyfile(source, target)
+        except IOError:
+            self.logger.error(f"fail to copy log file {source} to the test directory {target}")
+            exit(-1)
+        self.logger.info(f"logs for this run are saved in {target}")
 
