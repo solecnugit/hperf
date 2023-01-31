@@ -1,6 +1,5 @@
 from connector import Connector, LocalConnector, RemoteConnector
 from event_group import EventGroup
-import os
 import logging
 
 class Profiler:
@@ -14,6 +13,8 @@ class Profiler:
         :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
         :param event_group: an instance of 'EventGroup'
         """
+        self.logger = logging.getLogger("hperf")
+        
         self.connector: Connector = connector
         self.configs: dict = configs
         self.event_groups: EventGroup = event_groups
@@ -23,9 +24,9 @@ class Profiler:
         Generate and execute profiling script.
         """
         script = self.__get_profile_script()
-        logging.info("start profiling")
+        self.logger.info("start profiling")
         self.connector.run_script(script)
-        logging.info("end profiling")
+        self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:
         """
@@ -49,14 +50,14 @@ class Profiler:
             output = self.connector.run_command(process_check_cmd)
             if output:
                 process_cmd = output.decode("utf-8")
-                logging.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
+                self.logger.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
                 sanity_check_flag = False
         # 2. for x86_64 platform, check the NMI watchdog
         if self.event_groups.isa == "x86_64":
             nmi_watchdog_check_cmd = ["cat", "/proc/sys/kernel/nmi_watchdog"]
             output = self.connector.run_command(nmi_watchdog_check_cmd)
             if int(output) == 1:
-                logging.warning(f"sanity check: NMI watchdog is enabled.")
+                self.logger.warning(f"sanity check: NMI watchdog is enabled.")
                 sanity_check_flag = False
 
         return sanity_check_flag
@@ -78,5 +79,5 @@ class Profiler:
         script += 'perf_error="$TMP_DIR"/perf_error\n'
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
-        logging.debug("profiling script: \n" + script)
+        self.logger.debug("profiling script: \n" + script)
         return script

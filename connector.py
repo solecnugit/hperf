@@ -25,6 +25,7 @@ class Connector:
         """
         # common initialization shared by 'LocalConnector' and 'RemoteConnector'
         self.configs = configs
+        self.logger = logging.getLogger("hperf")
 
     # interfaces of 'Connector'
     def get_test_dir_path(self) -> str:
@@ -74,13 +75,13 @@ class LocalConnector(Connector):
         if os.path.exists(configs["tmp_dir"]):
             if os.access(configs["tmp_dir"], os.R_OK | os.W_OK):
                 self.tmp_dir = os.path.abspath(configs["tmp_dir"])
-                logging.debug(
+                self.logger.debug(
                     f"set temporary directory: {self.tmp_dir} (already exists)")
             else:
                 bad_tmp_dir = os.path.abspath(configs["tmp_dir"])
-                logging.warning(
+                self.logger.warning(
                     f"invalid temporary directory: {bad_tmp_dir} (already exists but has no R/W permission)")
-                logging.warning("reset temporary directory: '/tmp/hperf/'")
+                self.logger.warning("reset temporary directory: '/tmp/hperf/'")
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # Note: this action will change the value of 'configs["tmp_dir"]'
                 self.tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
@@ -88,13 +89,13 @@ class LocalConnector(Connector):
             try:
                 os.makedirs(configs["tmp_dir"])
                 self.tmp_dir = os.path.abspath(configs["tmp_dir"])
-                logging.debug(
+                self.logger.debug(
                     f"success to create the temporary directory {self.tmp_dir}")
             except OSError:
                 bad_tmp_dir = os.path.abspath(configs["tmp_dir"])
-                logging.warning(
+                self.logger.warning(
                     f"invalid temporary directory: {bad_tmp_dir} (fail to create the temporary directory)")
-                logging.warning("reset temporary directory: '/tmp/hperf/'")
+                self.logger.warning("reset temporary directory: '/tmp/hperf/'")
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # Note: this action will change the value of 'configs["tmp_dir"]'
                 self.tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
@@ -103,7 +104,7 @@ class LocalConnector(Connector):
         # then create a sub-directory named by this string in the temporary directory for saving files for profiling.
         self.test_id = self.__find_test_id()
         os.makedirs(self.get_test_dir_path())
-        logging.info(f"test directory: {self.get_test_dir_path()}")
+        self.logger.info(f"test directory: {self.get_test_dir_path()}")
 
     def __find_test_id(self) -> str:
         """
@@ -139,11 +140,11 @@ class LocalConnector(Connector):
         :return: the returned value of executing the shell script
         """
         script_path = self.__generate_script(script)
-        logging.debug(f"run script: {script_path}")
+        self.logger.debug(f"run script: {script_path}")
         process = subprocess.Popen(
             ["bash", f"{script_path}"], stdout=subprocess.PIPE)
         ret_code = process.wait()
-        logging.debug(f"finish script: {script_path}")
+        self.logger.debug(f"finish script: {script_path}")
         return ret_code
 
     def __generate_script(self, script: str) -> str:
@@ -155,7 +156,7 @@ class LocalConnector(Connector):
         script_path = os.path.join(self.tmp_dir, self.test_id, "perf.sh")
         with open(script_path, 'w') as f:
             f.write(script)
-        logging.debug(f"generate script: {script_path}")
+        self.logger.debug(f"generate script: {script_path}")
         return script_path
 
     def run_command(self, command_args: Union[Sequence[str], str]) -> str:
@@ -198,13 +199,13 @@ class RemoteConnector(Connector):
         if os.path.exists(specified_tmp_dir):
             if os.access(specified_tmp_dir, os.R_OK | os.W_OK):
                 self.local_tmp_dir = os.path.abspath(specified_tmp_dir)
-                logging.debug(
+                self.logger.debug(
                     f"set local temporary directory: {self.local_tmp_dir} (already exists)")
             else:
                 bad_local_tmp_dir = os.path.abspath(specified_tmp_dir)    # does not have R/W permission
-                logging.warning(
+                self.logger.warning(
                     f"invalid local temporary directory: {bad_local_tmp_dir} (already exists but has no R/W permission)")
-                logging.warning("reset the local temporary directory to '/tmp/hperf/'")
+                self.logger.warning("reset the local temporary directory to '/tmp/hperf/'")
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # Note: this action will change the value of 'configs["tmp_dir"]'
                 self.local_tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
@@ -212,13 +213,13 @@ class RemoteConnector(Connector):
             try:
                 os.makedirs(specified_tmp_dir)
                 self.local_tmp_dir = os.path.abspath(specified_tmp_dir)
-                logging.debug(
+                self.logger.debug(
                     f"success to create the local temporary directory {self.local_tmp_dir}")
             except OSError:
                 bad_local_tmp_dir = os.path.abspath(specified_tmp_dir)
-                logging.warning(
+                self.logger.warning(
                     f"invalid local temporary directory: {bad_local_tmp_dir} (fail to create the temporary directory)")
-                logging.warning("reset the local temporary directory to '/tmp/hperf/'")
+                self.logger.warning("reset the local temporary directory to '/tmp/hperf/'")
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # Note: this action will change the value of 'configs["tmp_dir"]'
                 self.local_tmp_dir = configs["tmp_dir"] = "/tmp/hperf/"
@@ -227,7 +228,7 @@ class RemoteConnector(Connector):
         # then create a sub-directory named by this string in the local temporary directory for saving files for profiling.
         self.test_id = self.__find_test_id()
         os.makedirs(self.get_test_dir_path())
-        logging.info(f"test directory (local): {self.get_test_dir_path()}")
+        self.logger.info(f"test directory (local): {self.get_test_dir_path()}")
 
         # step 2. open a SSH session
         # paramiko SSH connection configurations
@@ -242,13 +243,13 @@ class RemoteConnector(Connector):
         try:
             self.client.connect(self.hostname, self.port, self.username, self.password)
         except paramiko.BadHostKeyException:
-            logging.error("the server's host key could not be verified")
+            self.logger.error("the server's host key could not be verified")
             exit(-1)
         except paramiko.AuthenticationException:
-            logging.error("authentication failed")
+            self.logger.error("authentication failed")
             exit(-1)
         except paramiko.SSHException:
-            logging.error("connecting or establishing an SSH session failed")
+            self.logger.error("connecting or establishing an SSH session failed")
             exit(-1)
 
         # step 3. open a SFTP session
@@ -260,23 +261,23 @@ class RemoteConnector(Connector):
         # the initial working directory is "~/" 
         file_list = self.sftp.listdir(".")    # list all files (including directories) in current working directory
         if ".hperf" in file_list:    # directory ./.hperf/ exists on the remote SUT
-            logging.debug(f"directory {default_remote_tmp_dir} exists on the remote SUT")
+            self.logger.debug(f"directory {default_remote_tmp_dir} exists on the remote SUT")
             try:
                 self.sftp.chdir(default_remote_tmp_dir)    # change working directory: ./.hperf/
                 for file in self.sftp.listdir("."):    # delete all files in ./.hperf/
                     self.sftp.remove(file)
             except IOError:
-                logging.error("SFTP session failed")
+                self.logger.error("SFTP session failed")
                 exit(-1)
             finally:
                 self.sftp.chdir()    # reset working directory to ./
         else:    # directory ./.hperf/ does not exist on the remote SUT
-            logging.debug(f"directory {default_remote_tmp_dir} does not exist on the remote SUT")
+            self.logger.debug(f"directory {default_remote_tmp_dir} does not exist on the remote SUT")
             self.sftp.mkdir(default_remote_tmp_dir)
 
         self.remote_tmp_dir = default_remote_tmp_dir
 
-        logging.debug(f"remote temporary directory: {self.remote_tmp_dir}")
+        self.logger.debug(f"remote temporary directory: {self.remote_tmp_dir}")
 
     def __find_test_id(self) -> str:
         """
@@ -316,22 +317,22 @@ class RemoteConnector(Connector):
         else:
             command: str = command_args
         try:
-            logging.debug(f"execute command on remote: {command}")
+            self.logger.debug(f"execute command on remote: {command}")
             _, stdout, _ = self.client.exec_command(command)
             ret_code = stdout.channel.recv_exit_status()
-            logging.debug(f"finished with exit code {ret_code}")
+            self.logger.debug(f"finished with exit code {ret_code}")
             if ret_code != 0:
-                logging.debug(f"executing command {command} with an exit code of {ret_code}")
+                self.logger.debug(f"executing command {command} with an exit code of {ret_code}")
             else:
                 output = stdout.read().decode("utf-8")
-                logging.debug(f"stdout of command {command}: \n{output}")
+                self.logger.debug(f"stdout of command {command}: \n{output}")
                 return output
         except paramiko.SSHException:
-            logging.error("executing command through SSH connection failed")
+            self.logger.error("executing command through SSH connection failed")
             self.client.close()
             exit(-1)
         except RuntimeError:
-            logging.error(f"executing command {command} failed")
+            self.logger.error(f"executing command {command} failed")
             self.client.close()
             exit(-1)
     
@@ -345,13 +346,13 @@ class RemoteConnector(Connector):
         remote_script_path = self.__generate_script(script)
 
         # step 2. run the script by bash
-        logging.debug(f"run script on remote SUT: {remote_script_path}")
+        self.logger.debug(f"run script on remote SUT: {remote_script_path}")
         _, stdout, _ = self.client.exec_command(f"bash {remote_script_path}")
         ret_code = stdout.channel.recv_exit_status()
-        logging.debug(f"finished with exit code {ret_code}")
+        self.logger.debug(f"finished with exit code {ret_code}")
         if ret_code != 0:
-            logging.debug(f"executing script {remote_script_path} with an exit code of {ret_code}")
-        logging.debug(f"finish script: {remote_script_path}")
+            self.logger.debug(f"executing script {remote_script_path} with an exit code of {ret_code}")
+        self.logger.debug(f"finish script: {remote_script_path}")
 
         # step 3. pull files from remote SUT for following analyzing
         self.__pull_remote()
@@ -367,7 +368,7 @@ class RemoteConnector(Connector):
         remote_script_path = os.path.join(self.remote_tmp_dir, "perf.sh")
         with self.sftp.open(remote_script_path, "w") as f:
             f.write(script)
-        logging.debug(f"generate script in remote temporary directory: {remote_script_path}")
+        self.logger.debug(f"generate script in remote temporary directory: {remote_script_path}")
         return remote_script_path
 
     def __pull_remote(self):
@@ -377,4 +378,4 @@ class RemoteConnector(Connector):
         for file in self.sftp.listdir(self.remote_tmp_dir):
             remote_file_path = os.path.join(self.remote_tmp_dir, file)
             self.sftp.get(remote_file_path, os.path.join(self.get_test_dir_path(), file))
-            logging.info(f"get file from remote SUT: {remote_file_path}")
+            self.logger.debug(f"get file from remote SUT: {remote_file_path}")

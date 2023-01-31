@@ -13,6 +13,8 @@ class EventGroup:
         then it will dynamic import the pre-defined configurations in 'profiler/arch/<arch_name>.py'.
         :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
         """
+        self.logger = logging.getLogger("hperf")
+        
         self.connector = connector
 
         self.isa = self.__get_isa()
@@ -33,7 +35,7 @@ class EventGroup:
         :return: a string of ISA, such as 'x86_64', 'aarch64', etc.
         """
         isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip()
-        logging.debug(f"ISA: {isa}")
+        self.logger.debug(f"ISA: {isa}")
         return isa
     
     def __get_architecture(self) -> str:
@@ -42,7 +44,7 @@ class EventGroup:
         :return: a string of architecture
         """
         processor = self.connector.run_command("lscpu | grep 'Model name:' | awk -F: '{print $2}'").strip()
-        logging.debug(f"processor model: {processor}")
+        self.logger.debug(f"processor model: {processor}")
         # TODO: the following logic is simple, it should be refined in future
         if self.isa == "x86_64":
             if processor.find("Intel") != -1:
@@ -57,13 +59,13 @@ class EventGroup:
                     else:
                         arch = "intel_cascadelake"
                 except ValueError:
-                    logging.warning(f"unrecongized Intel processor model: {model}, assumed as intel_cascadelake")
+                    self.logger.warning(f"unrecongized Intel processor model: {model}, assumed as intel_cascadelake")
                     arch = "intel_cascadelake"
             elif processor.find("AMD") != -1:
                 arch = "amd"
-                logging.error(f"currently hperf does not support AMD processor: {model}")
+                self.logger.error(f"currently hperf does not support AMD processor: {model}")
             else:
-                logging.error(f"unrecongized processor model: {model}")
+                self.logger.error(f"unrecongized processor model: {model}")
                 exit(-1)
         elif self.isa == "aarch64":
             if processor.find("Kunpeng") != -1:
@@ -71,9 +73,9 @@ class EventGroup:
             else:
                 arch = "arm"
         else:
-            logging.error(f"unsupported ISA: {self.isa}")
+            self.logger.error(f"unsupported ISA: {self.isa}")
             exit(-1)
-        logging.debug(f"architecture model: {arch}")
+        self.logger.debug(f"architecture model: {arch}")
         return arch
     
     def get_event_groups_str(self) -> str:
@@ -102,5 +104,5 @@ class EventGroup:
             event_groups_str += "}',"
         event_groups_str = event_groups_str[:-1]
 
-        logging.debug(f"generated string of event groups: {event_groups_str}")
+        self.logger.debug(f"generated string of event groups: {event_groups_str}")
         return event_groups_str

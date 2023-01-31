@@ -13,6 +13,8 @@ class OptParser:
         """
         Constructor of 'OptParser'
         """
+        self.logger = logging.getLogger("hperf")
+
         self.parser = ArgumentParser(prog="python hperf.py",
                                      description="hperf: an easy-to-use microarchitecture performance data collector")
 
@@ -86,12 +88,7 @@ class OptParser:
 
         # step 0. check verbosity
         if args.verbose:
-            # option 'force' is needed, otherwise the level will not changed.
-            logging.basicConfig(
-                format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.DEBUG, force=True)
-
-        logging.debug(
-            f"options and arguments passed from command line: {args}")
+            configs["verbose"] = True
 
         # step 1. workload command
         if args.command:
@@ -116,7 +113,7 @@ class OptParser:
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
 
-        logging.debug(f"parsed configurations: {configs}")
+        self.logger.debug(f"parsed configurations: {configs}")
 
         return configs
 
@@ -137,7 +134,7 @@ class OptParser:
                     for i in range(start_cpu_id, end_cpu_id + 1):
                         cpu_ids.append(i)
         except ValueError:
-            logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+            self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
             exit(-1)
         reduced_cpu_ids = list(set(cpu_ids))
         reduced_cpu_ids.sort(key=cpu_ids.index)
@@ -145,7 +142,7 @@ class OptParser:
         # check if all cpu ids are vaild (not negative)
         for cpu_id in reduced_cpu_ids:
             if cpu_id < 0:
-                logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+                self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
                 exit(-1)
         return reduced_cpu_ids
 
@@ -167,7 +164,7 @@ class OptParser:
             if remote_configs["username"] == "" or remote_configs["hostname"] == "":
                 raise ValueError
         except (IndexError, ValueError):
-            logging.error(f"invalid SSH connection string: {ssh_conn_str}")
+            self.logger.error(f"invalid SSH connection string: {ssh_conn_str}")
             exit(-1)
 
         # get the password by command line interaction

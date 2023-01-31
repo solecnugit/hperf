@@ -14,6 +14,8 @@ class Analyzer:
         :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
         :param event_group: an instance of 'EventGroup'
         """
+        self.logger = logging.getLogger("hperf")
+        
         self.connector = connector
         self.configs = configs
         self.event_groups = event_groups
@@ -109,7 +111,7 @@ class Analyzer:
         if to_csv:
             results_path = os.path.join(self.connector.get_test_dir_path(), "results.csv")
             scoped_event_per_cpu.to_csv(results_path, header=True)
-            logging.info(f"save DataFrame to CSV file: {results_path}")
+            self.logger.info(f"save DataFrame to CSV file: {results_path}")
         return scoped_event_per_cpu
 
 
