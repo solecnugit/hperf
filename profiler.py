@@ -25,7 +25,13 @@ class Profiler:
         """
         script = self.__get_profile_script()
         self.logger.info("start profiling")
-        self.connector.run_script(script)
+        ret_code = self.connector.run_script(script)
+        if ret_code != 0:
+            self.logger.error("executing profiling script on the SUT failed. check log files in the test directory.")
+            if isinstance(self.connector, RemoteConnector):
+                self.connector.sftp.close()
+                self.connector.client.close()
+            exit(-1)
         self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:
