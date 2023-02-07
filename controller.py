@@ -12,17 +12,17 @@ from event_group import EventGroup
 class Controller:
     """
     `Controller` is responsible for the whole process control of hperf.
-    Users can conduct profiling for workload by calling `hperf()` method after instantiate `Controller`.
+    Users can conduct profiling for workload by calling `hperf()` method.
     """
     VERSION = "v1.1.0"
 
     def __init__(self, argv: Sequence[str]):
         """
         Constructor of `Controller`.
-        :param `argv`: options and parameters passed from command line when invoke `hperf`. 
+        :param `argv`: options and arguments passed from command line when invoke `hperf`. 
         Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`).
         """
-        self.argv = argv    # the original command line options and parameters
+        self.__argv = argv    # (private) the original command line options and parameters
 
         self.configs = {}    # a dict contains parsed configurations for the following steps
         self.parser = OptParser()
@@ -36,8 +36,8 @@ class Controller:
         # Note: Since `Logger` follows singleton pattern, 
         # it is unnecessary to pass the reference of the instance of `Logger` to other classes throught their constructor.
         # When we need to log records, use the method `logging.getLogger(<name>)` provided by module logging to get the instance of `Logger`,
-        # where it will get the very same instance of `Logger` as long as the `<name`> is same.
-        self.logger = logging.getLogger("hperf")
+        # where it will get the very same instance of `Logger` as long as the `<name>` is the same.
+        self.logger: logging.Logger = logging.getLogger("hperf")
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
 
@@ -60,6 +60,8 @@ class Controller:
         This method covers the whole process of profiling.
         Call this method to start profiling for workloads.
         """
+        # TODO: add `-v`/`--version` option to print the version
+        # now it will always print at the first. 
         self.logger.info(f"hperf {Controller.VERSION}")
 
         # step 1.
@@ -82,7 +84,7 @@ class Controller:
         If passed the validation, instantiate `Connector` (`.connector`). 
         """
         # step 1.1. parse the original command line options and arguments
-        self.configs = self.parser.parse_args(self.argv)
+        self.configs = self.parser.parse_args(self.__argv)
 
         # step 1.2. if verbosity is declared (`-v` option), change the threshold of log level to print to console:
         # log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
@@ -92,7 +94,7 @@ class Controller:
             self.__handler_stream.setLevel(logging.DEBUG)
         
         # step 1.3. validate the configurations
-        # TODO: in future, more the validation of parsed configurations should be added here
+        # TODO: in future, more the validation of parsed configurations should be added here or in `OptParser`
         # if command is empty, exit the program
         if "command" not in self.configs:
             self.logger.error("workload is not specified")
@@ -103,9 +105,9 @@ class Controller:
 
     def __get_connector(self) -> Connector:
         """
-        Depend on the parsed configurations (`.configs`), instantiate a `LocalConnector` or `RemoteConnector` (`.connector`). 
-        `LocalConnector` provides useful methods to interact with the local host, while `RemoteConnector` is for remote host by SSH. 
-        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which defined useful methods for other modules to use. 
+        Depend on the parsed configurations (`.configs`), instantiate a `LocalConnector` or `RemoteConnector` (`.connector`).  
+        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which defined useful methods for other modules 
+        to interact with SUT, where the former is for local SUT while the latter is for remote SUT. 
         """
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]' 
         # if the parsed temporary directory is invalid (cannot be accessed).
@@ -119,16 +121,17 @@ class Controller:
     def __profile(self):
         """
         Instantiate `EventGroup` (`.event_groups`) and `Profiler` (`.profiler`) based on the parsed configurations (`.configs`). 
-        Then call the methods of `Profiler`:
+        Then it will call the methods of `Profiler`. The following steps will be conducted: 
         1) run sanity check, 
         2) generate and execute profiling script on SUT and save the raw performance data in the test directory 
         (a sub-directory in the temporary directory which can be obtained by `.connector.get_test_dir_path()` method), 
-        3) if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host
+        3) if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host. 
         """
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
         
         # step 2.1. sanity check
+        # if sanity check does not pass, user choose whether to continue profiling. 
         if not self.profiler.sanity_check():
             select = input("Detected some problems which may interfere profiling. Continue profiling? [y|N] ")
             while True:
@@ -152,14 +155,17 @@ class Controller:
 
     def __analyze(self):
         """
-        Analyze the raw performance data, then output the report of performance metrics.
+        Analyze the raw performance data which is generated by `Profiler`. 
+        Then output the report of performance metrics to the test directory. 
         """
         self.analyzer = Analyzer(self.connector, self.configs, self.event_groups)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
 
     def __save_log_file(self):
         """
-        Copy the log file from '/tmp/hperf/hperf.log' to the test directory for this run.
+        Copy the log file from `self.log_filed_path` to the test directory for this run. 
+        The `Logger` will temporarily write logs to this file (since `Logger` is instantiated before `Connector`) 
+        and copy to the test directory for the convenience of users. 
         """
         source = self.log_file_path
         target = os.path.join(self.connector.get_test_dir_path(), "hperf.log")

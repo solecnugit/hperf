@@ -4,14 +4,15 @@ import logging
 
 class Profiler:
     """
-    'Profiler' is responsible for collecting raw microarchitecture performance data.
+    `Profiler` is responsible for collecting raw microarchitecture performance data. 
+    It will collect raw performance data by other profilers (such as perf, sar, etc.) on SUTs through `Connector`. 
     """
     def __init__(self, connector: Connector, configs: dict, event_groups: EventGroup):
         """
         Constructor of 'Profiler'
-        :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
-        :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
-        :param event_group: an instance of 'EventGroup'
+        :param `connector`: an instance of `Connector` (`LocalConnector` or `RemoteConnector`)
+        :param `configs`: a dict of parsed configurations by `Parser`
+        :param `event_group`: an instance of 'EventGroup'
         """
         self.logger = logging.getLogger("hperf")
         
@@ -21,7 +22,7 @@ class Profiler:
 
     def profile(self):
         """
-        Generate and execute profiling script.
+        Generate and execute profiling script on SUT.
         """
         script = self.__get_profile_script()
         self.logger.info("start profiling")
@@ -41,12 +42,13 @@ class Profiler:
         it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running. 
         Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC, 
         it should also be checked.
-        :return: if the SUT passes the sanity check, it will return True, 
-        else it will return False and record the information through 'logging'.
+        :return: if the SUT passes the sanity check, it will return `True`, 
+        else it will return `False` and record the information through `Logger`.
         """
         sanity_check_flag = True
 
         # 1. check if there is any other profiler (such as VTune, perf, etc.) is already running
+        # TODO: add more pattern of profilers may interfere measurement
         process_check_list = [
             "linux-tools/.*/perf", 
             "/intel/oneapi/vtune/.*/emon"
@@ -71,8 +73,11 @@ class Profiler:
     def __get_profile_script(self) -> str:
         """
         Based on the parsed configuration, generate the string of shell script for profiling.
-        :return: the string of shell script for profiling
+        :return: a string of shell script for profiling
         """
+        # for local SUT, output raw performance data to the test directory directly will be fine. 
+        # however, for remote SUT, raw performance data should be output to the remote temporary which can be accessd on remote SUT, 
+        # then pull the data to the local test directory. 
         if isinstance(self.connector, LocalConnector):
             perf_dir = self.connector.get_test_dir_path()
         else:
