@@ -121,6 +121,9 @@ class LocalConnector(Connector):
         process = subprocess.Popen(
             ["bash", f"{script_path}"], stdout=subprocess.PIPE)
         ret_code = process.wait()
+        self.logger.debug(f"finished with exit code {ret_code}")
+        if ret_code != 0:
+            self.logger.debug(f"executing script {script_path} with an exit code of {ret_code}")
         self.logger.debug(f"finish script: {script_path}")
         return ret_code
 
