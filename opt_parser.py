@@ -6,17 +6,21 @@ from getpass import getpass
 
 class OptParser:
     """
-    'OptParser' is responsible for parsing arguments passed from command line and instantiate Task, Profiler and Connector
+    `OptParser` is responsible for parsing and validating options and arguments passed from command line. 
+    It will create a dict containing all configurations may used by other modules such as `Connector`, `Profiler` and `Analyzer`, etc. 
     """
 
     def __init__(self) -> None:
         """
-        Constructor of 'OptParser'
+        Constructor of `OptParser`
         """
+        self.logger = logging.getLogger("hperf")
+
+        # initialize `ArgumentParser`
         self.parser = ArgumentParser(prog="python hperf.py",
                                      description="hperf: an easy-to-use microarchitecture performance data collector")
 
-        # positional arguments:
+        # [1] positional arguments:
         # COMMAND
         self.parser.add_argument("command",
                                  # if option 'nargs' not set, command with arguments will not be accepted.
@@ -24,27 +28,27 @@ class OptParser:
                                  metavar="COMMAND",
                                  help="workload command you can specify in a shell")
 
-        # required options:
+        # [2] required options:
         # TODO: some required options can be added in future
 
-        # optional options:
-        # [-r/--remote SSH_CONN_STR]
+        # [3] optional options:
+        #   [-r/--remote SSH_CONN_STR]
         self.parser.add_argument("-r", "--remote",
                                  metavar="SSH_CONN_STR",
                                  type=str,
                                  help="profiling on remote host by specifying a SSH connection string (default on local host).")
-        # [--tmp-dir]
+        #   [--tmp-dir]
         self.parser.add_argument("--tmp-dir",
                                  metavar="TMP_DIR_PATH",
                                  type=str,
                                  default="/tmp/hperf/",
                                  help="temporary directory to store profiling results and logs (default '/tmp/hperf/').")
-        # [-v/--verbose]
+        #   [-v/--verbose]
         self.parser.add_argument("-v", "--verbose",
                                  action="store_true",
                                  help="increase output verbosity.")
 
-        # [--cpu CPU]
+        #   [--cpu CPU]
         # hperf will conduct a system-wide profiling so that the list will not affect performance data collection
         # but will affect the aggregation of raw performance data.
         # If not specified, 'Analyzer' will aggregate performance data of all cpus.
@@ -55,12 +59,12 @@ class OptParser:
                                  help="specify the scope of performance data aggregation by passing a list of cpu ids.")
 
         # TODO: add more options in future
-        # [--config FILE_PATH]
+        #   [--config FILE_PATH]
         # self.parser.add_argument("-f", "--config-file",
         #                          metavar="FILE_PATH",
         #                          type=str,
         #                          help="specify a configuration file with JSON format.")
-        # [--time SECOND]
+        #   [--time SECOND]
         # current workaround: COMMAND = sleep n
         # self.parser.add_argument("-t", "--time",
         #                          metavar="SECOND",
@@ -69,9 +73,9 @@ class OptParser:
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
-        Parse the options and parameters passed from command line and return an instance of Connector
-        :param argv: a list of arguments
-        :return configs: configure of this hperf run
+        Parse the options and arguments passed from command line and return an instance of Connector. 
+        :param `argv`: a list of arguments
+        :return: a dict of configurations for this hperf run
         """
         configs = {}
 
@@ -86,12 +90,7 @@ class OptParser:
 
         # step 0. check verbosity
         if args.verbose:
-            # option 'force' is needed, otherwise the level will not changed.
-            logging.basicConfig(
-                format="%(asctime)-15s %(levelname)-8s %(message)s", level=logging.DEBUG, force=True)
-
-        logging.debug(
-            f"options and arguments passed from command line: {args}")
+            configs["verbose"] = True
 
         # step 1. workload command
         if args.command:
@@ -116,14 +115,16 @@ class OptParser:
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
 
-        logging.debug(f"parsed configurations: {configs}")
+        self.logger.debug(f"parsed configurations: {configs}")
 
         return configs
 
     def __parse_cpu_list(self, cpu_list: str) -> list:
         """
-        Parse the cpu list string with comma (,) and hyphen (-), and get the list of cpu ids.
-        e.g. if cpu_list = '2,4-8', the method will return [2, 4, 5, 6, 7, 8]
+        Parse the string of cpu list with comma (`,`) and hyphen (`-`), and get the list of cpu ids. 
+        e.g. if `cpu_list = '2,4-8'`, the method will return `[2, 4, 5, 6, 7, 8]`
+        :param `cpu_list`: a string of cpu list
+        :return: a list of cpu ids (the elements are non-negative and non-repetitive)
         """
         cpu_ids = []
         cpu_id_slices = cpu_list.split(",")
@@ -137,23 +138,25 @@ class OptParser:
                     for i in range(start_cpu_id, end_cpu_id + 1):
                         cpu_ids.append(i)
         except ValueError:
-            logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+            self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
             exit(-1)
+        
+        # make the list non-repetitive
         reduced_cpu_ids = list(set(cpu_ids))
         reduced_cpu_ids.sort(key=cpu_ids.index)
         
-        # check if all cpu ids are vaild (not negative)
+        # check if all cpu ids are vaild (non-negative)
         for cpu_id in reduced_cpu_ids:
             if cpu_id < 0:
-                logging.error(f"invalid argument {cpu_list} for -c/--cpu option")
+                self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
                 exit(-1)
         return reduced_cpu_ids
 
     def __parse_remote_str(self, ssh_conn_str: str) -> dict:
         """
-        Parse the SSH connection string with the format of 'username@hostname', then ask user to enter the password.
-        :param ssh_conn_str: SSH connection string
-        :return: a dict of remote host informations
+        Parse the SSH connection string with the format of `username@hostname`, then ask user to enter the password.
+        :param `ssh_conn_str`: SSH connection string
+        :return: a dict of remote host informations which can be updated to `configs` in method `.parse_args()`
         """
         # TODO: try to parse all information for the remote SSH connection from the parameter of -r / --remote option.
         # e.g. ssh_conn_str = "tongyu@ampere.solelab.tech"
@@ -167,7 +170,7 @@ class OptParser:
             if remote_configs["username"] == "" or remote_configs["hostname"] == "":
                 raise ValueError
         except (IndexError, ValueError):
-            logging.error(f"invalid SSH connection string: {ssh_conn_str}")
+            self.logger.error(f"invalid SSH connection string: {ssh_conn_str}")
             exit(-1)
 
         # get the password by command line interaction

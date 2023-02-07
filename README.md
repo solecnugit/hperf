@@ -1,5 +1,7 @@
 # hperf
 
+版本 v1.1.0
+
 hperf（Hierarchical Performance Profiling Tools）是一个在Linux操作系统上跨指令集架构的微架构性能数据采集工具，可用于工作负载的微架构层面的特征分析，其特征在于：
 
 - 高效地收集工作负载运行时微架构层面各组件的性能数据，包括指令流水线、缓存、分支预测等方面；
@@ -28,16 +30,20 @@ hperf是使用Python开发的，并不需要执行特定的安装程序，当前
 
 用户可以使用Python的包管理工具（pip或Anaconda）使得当前系统的Python环境能够导入相应的依赖包。
 
-代码仓库中的`environment.yml`文件记录了相关依赖项，以Anaconda为例，可以使用下述命令创建并激活环境（环境名称为hperf）：
+代码仓库中的`environment.yml`文件记录了相关依赖项，可以通过该文件创建包含运行时所需依赖的环境。
+
+以Anaconda为例，将当前工作目录切换至仓库的根目录，使用下述命令创建并激活环境（conda环境名称为hperf）：
 
 ```
 $ conda env create --file environment.yml
 $ conda activate hperf
 ```
 
-除此之外，由于hperf需要调用perf进行性能剖析任务，因此需要保证待测机器已经安装perf，能够从命令行执行`perf`命令。
+除此之外，由于hperf需要调用perf进行性能剖析任务，因此需要保证待测机器（System Under Test，SUT）已经安装perf，能够从命令行执行`perf`命令。
 
-由于perf是Linux内核工具的一部分，perf的版本与内核版本一致，对于较新的机器，推荐将内核升级至较高的版本。
+> SUT可以是本地机器，也可以是能够通过SSH连接的远程机器。
+
+由于perf是Linux内核工具的一部分，perf的版本与内核版本一致，对于较新的机器（特别是ARM指令集架构的机器），推荐将内核升级至较高的版本。
 
 ## 使用方法
 
@@ -47,20 +53,23 @@ $ conda activate hperf
 $ python hperf.py [options] <command> 
 ```
 
-其中`[options]`是可选的选项，`<command>`是必要的参数，表示执行工作负载的命令。
+其中`[options]`是选项参数（optional arguments），`<command>`是位置参数（positional arguments），表示执行工作负载的命令。
+
+选项参数`[options]`是非必须的，若不指定则hperf按默认行为进行性能剖析；而位置参数`<command>`是必须的，且必须位于命令行的最后。
 
 ### 支持的选项
 
-当前版本的hperf支持的选项：
+当前版本的hperf支持的选项参数列举如下：
 
-| 选项                  | 描述                    |
-| :-------------------: | :--------------------: |
-| `-h` \| `--help`      | 显示hperf帮助信息，包括支持的选项以及用法 |
-| `--tmp-dir`            | 指定临时文件夹的目录，用于存放用于性能分析的脚本以及对应输出结果、日志文件、原始性能数据、结果文件等，若不声明则默认为`/tmp/hperf/` |
-| `-v` \| `--verbose`   | 显示DEBUG信息，若不声明则默认不输出 |
-| `-c` \| `--cpu`       | 指定性能指标的聚合范围，用处理器ID的列表声明，列表可以使用连词符（`-`）与逗号（`,`），例如`5-8,9,10` |
+| 选项与参数                                    | 描述                                   |
+| :------------------------------------------: | :------------------------------------: |
+| `-h`              \| `--help`                | 显示hperf帮助信息，包括支持的选项以及用法 |
+| `--tmp-dir TMP_DIR_PATH`                     | 指定临时文件夹的目录，用于存放用于性能分析的脚本以及对应输出结果、日志文件、原始性能数据、结果文件等，若不声明则默认为`/tmp/hperf/` |
+| `-r SSH_CONN_STR` \| `--remote SSH_CONN_STR` | 指定待测机器为远程机器，需要指定用于建立SSH连接的主机地址与用户名，格式为`<username>@<hostname>`，若不声明则待测机器为本地机器 |
+| `-v`              \| `--verbose`             | 显示DEBUG信息，若不声明则默认不输出 |
+| `-c CPU_ID_LIST`  \| `--cpu CPU_ID_LIST`     | 指定性能指标的聚合范围，用处理器ID的列表声明，列表可以使用连词符（`-`）与逗号（`,`），例如`5-8,9,10` |
 
-注：`-c`选项不影响测量，只影响测量后对原始性能数据的处理。
+注：`-c`选项不影响测量的行为，只影响测量后对原始性能数据的处理。
 
 ### 运行前环境检查
 
@@ -68,7 +77,7 @@ hperf在执行测量之前，对待测机器进行环境检查，其目的在于
 
 当前版本hperf的检查包括：
 
-* 是否已经运行其他性能剖析器，例如Intel VTune，perf等（因为性能剖析器很可能占用性能计数器）
+* 是否已经运行其他性能剖析工具，例如Intel VTune，perf等（因为性能剖析工具很可能占用性能计数器）
 * 对于x86架构的机器，NMI看门狗是否已经关闭（因为NMI看门狗会占用一个通用性能计数器）
 
 如果hperf检查到了上述问题，会发出相应提示，此时命令行会等待用户键入指令，确定是否在这样的情况下继续进行测量。
@@ -84,7 +93,24 @@ $ python hperf.py sleep 5
 Detected some problems which may interfere profiling. Continue profiling? [y|N] 
 ```
 
-若用户键入n/N，那么hperf运行结束；若用户键入y/Y，那么hperf将执行测量。
+若用户键入`n`/`N`，那么hperf运行结束；若用户键入`y`/`Y`，那么hperf将执行测量。
+
+### 远程机器连接
+
+若指定了`-r SSH_CONN_STR`选项，那么hperf将建立与远程待测机器的SSH连接，例如需要使用用户名`john`登录主机名为`example.com`的待测机器，那么调用hperf的命令应当为：
+
+```
+$ python hperf.py -r john@example.com sleep 5
+```
+
+此时，hperf将会在命令行中以交互方式提示用户输入密码，用户在命令行中键入密码，例如：
+
+```
+2023-02-04 16:39:59,255 INFO     hperf v1.1.0
+connect to john@example.com, enter the password for user john:
+```
+
+若连接成功，则执行后续测量任务；若连接失败，提示相关信息并运行结束。
 
 ### 测量
 

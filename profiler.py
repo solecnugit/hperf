@@ -1,31 +1,39 @@
 from connector import Connector, LocalConnector, RemoteConnector
 from event_group import EventGroup
-import os
 import logging
 
 class Profiler:
     """
-    'Profiler' is responsible for collecting raw microarchitecture performance data.
+    `Profiler` is responsible for collecting raw microarchitecture performance data. 
+    It will collect raw performance data by other profilers (such as perf, sar, etc.) on SUTs through `Connector`. 
     """
     def __init__(self, connector: Connector, configs: dict, event_groups: EventGroup):
         """
         Constructor of 'Profiler'
-        :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
-        :param configs: a dict of parsed configurations (the member 'configs' in 'Controller')
-        :param event_group: an instance of 'EventGroup'
+        :param `connector`: an instance of `Connector` (`LocalConnector` or `RemoteConnector`)
+        :param `configs`: a dict of parsed configurations by `Parser`
+        :param `event_group`: an instance of 'EventGroup'
         """
+        self.logger = logging.getLogger("hperf")
+        
         self.connector: Connector = connector
         self.configs: dict = configs
         self.event_groups: EventGroup = event_groups
 
     def profile(self):
         """
-        Generate and execute profiling script.
+        Generate and execute profiling script on SUT.
         """
         script = self.__get_profile_script()
-        logging.info("start profiling")
-        self.connector.run_script(script)
-        logging.info("end profiling")
+        self.logger.info("start profiling")
+        ret_code = self.connector.run_script(script)
+        if ret_code != 0:
+            self.logger.error("executing profiling script on the SUT failed. check log files in the test directory.")
+            if isinstance(self.connector, RemoteConnector):
+                self.connector.sftp.close()
+                self.connector.client.close()
+            exit(-1)
+        self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:
         """
@@ -34,12 +42,13 @@ class Profiler:
         it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running. 
         Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC, 
         it should also be checked.
-        :return: if the SUT passes the sanity check, it will return True, 
-        else it will return False and record the information through 'logging'.
+        :return: if the SUT passes the sanity check, it will return `True`, 
+        else it will return `False` and record the information through `Logger`.
         """
         sanity_check_flag = True
 
         # 1. check if there is any other profiler (such as VTune, perf, etc.) is already running
+        # TODO: add more pattern of profilers may interfere measurement
         process_check_list = [
             "linux-tools/.*/perf", 
             "/intel/oneapi/vtune/.*/emon"
@@ -48,15 +57,15 @@ class Profiler:
             process_check_cmd = f"ps -ef | awk '{{print $8}}' | grep {process}"
             output = self.connector.run_command(process_check_cmd)
             if output:
-                process_cmd = output.decode("utf-8")
-                logging.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
+                process_cmd = output
+                self.logger.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
                 sanity_check_flag = False
         # 2. for x86_64 platform, check the NMI watchdog
         if self.event_groups.isa == "x86_64":
             nmi_watchdog_check_cmd = ["cat", "/proc/sys/kernel/nmi_watchdog"]
             output = self.connector.run_command(nmi_watchdog_check_cmd)
             if int(output) == 1:
-                logging.warning(f"sanity check: NMI watchdog is enabled.")
+                self.logger.warning(f"sanity check: NMI watchdog is enabled.")
                 sanity_check_flag = False
 
         return sanity_check_flag
@@ -64,8 +73,11 @@ class Profiler:
     def __get_profile_script(self) -> str:
         """
         Based on the parsed configuration, generate the string of shell script for profiling.
-        :return: the string of shell script for profiling
+        :return: a string of shell script for profiling
         """
+        # for local SUT, output raw performance data to the test directory directly will be fine. 
+        # however, for remote SUT, raw performance data should be output to the remote temporary which can be accessd on remote SUT, 
+        # then pull the data to the local test directory. 
         if isinstance(self.connector, LocalConnector):
             perf_dir = self.connector.get_test_dir_path()
         else:
@@ -78,5 +90,5 @@ class Profiler:
         script += 'perf_error="$TMP_DIR"/perf_error\n'
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
-        logging.debug("profiling script: \n" + script)
+        self.logger.debug("profiling script: \n" + script)
         return script
