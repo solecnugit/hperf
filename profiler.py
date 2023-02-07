@@ -57,7 +57,7 @@ class Profiler:
             process_check_cmd = f"ps -ef | awk '{{print $8}}' | grep {process}"
             output = self.connector.run_command(process_check_cmd)
             if output:
-                process_cmd = output.decode("utf-8")
+                process_cmd = output
                 self.logger.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
                 sanity_check_flag = False
         # 2. for x86_64 platform, check the NMI watchdog
