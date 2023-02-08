@@ -32,21 +32,25 @@ class OptParser:
         # TODO: some required options can be added in future
 
         # [3] optional options:
+        #   [-V/--version]
+        self.parser.add_argument("-V", "--version",
+                                 action="store_true",
+                                 help="show the version and exit")
         #   [-r/--remote SSH_CONN_STR]
         self.parser.add_argument("-r", "--remote",
                                  metavar="SSH_CONN_STR",
                                  type=str,
-                                 help="profiling on remote host by specifying a SSH connection string (default on local host).")
+                                 help="profiling on remote host by specifying a SSH connection string (default on local host)")
         #   [--tmp-dir]
         self.parser.add_argument("--tmp-dir",
                                  metavar="TMP_DIR_PATH",
                                  type=str,
                                  default="/tmp/hperf/",
-                                 help="temporary directory to store profiling results and logs (default '/tmp/hperf/').")
+                                 help="temporary directory to store profiling results and logs (default '/tmp/hperf/')")
         #   [-v/--verbose]
         self.parser.add_argument("-v", "--verbose",
                                  action="store_true",
-                                 help="increase output verbosity.")
+                                 help="increase output verbosity")
 
         #   [--cpu CPU]
         # hperf will conduct a system-wide profiling so that the list will not affect performance data collection
@@ -88,6 +92,10 @@ class OptParser:
         # parse other options and arguments and update config dict
         # config specified in command line will overwrite the config defined in JSON file
 
+        # check `-V`/`--version` option
+        if args.version:
+            configs["version"] = True
+        
         # step 0. check verbosity
         if args.verbose:
             configs["verbose"] = True
@@ -122,6 +130,7 @@ class OptParser:
     def __parse_cpu_list(self, cpu_list: str) -> list:
         """
         Parse the string of cpu list with comma (`,`) and hyphen (`-`), and get the list of cpu ids. 
+        
         e.g. if `cpu_list = '2,4-8'`, the method will return `[2, 4, 5, 6, 7, 8]`
         :param `cpu_list`: a string of cpu list
         :return: a list of cpu ids (the elements are non-negative and non-repetitive)
@@ -138,17 +147,19 @@ class OptParser:
                     for i in range(start_cpu_id, end_cpu_id + 1):
                         cpu_ids.append(i)
         except ValueError:
-            self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
+            self.logger.error(
+                f"invalid argument {cpu_list} for -c/--cpu option")
             exit(-1)
-        
+
         # make the list non-repetitive
         reduced_cpu_ids = list(set(cpu_ids))
         reduced_cpu_ids.sort(key=cpu_ids.index)
-        
+
         # check if all cpu ids are vaild (non-negative)
         for cpu_id in reduced_cpu_ids:
             if cpu_id < 0:
-                self.logger.error(f"invalid argument {cpu_list} for -c/--cpu option")
+                self.logger.error(
+                    f"invalid argument {cpu_list} for -c/--cpu option")
                 exit(-1)
         return reduced_cpu_ids
 
