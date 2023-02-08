@@ -61,6 +61,10 @@ metrics = [
         "expression": "e0 / (e1 / 1000000)"
     },
     {
+        "metric": "FREQUENCY",
+        "expression": "e20 / (e1 / 1000000000)"
+    },
+    {
         "metric": "CPI",
         "expression": "e20 / e30"
     },

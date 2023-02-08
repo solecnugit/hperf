@@ -5,6 +5,12 @@ events = [
         "name": "CPU TIME"
     },
     {
+        "id": 1,
+        "perf_name": "duration_time",
+        "name": "WALL CLOCK TIME",
+        "type": "SYSTEM"
+    },
+    {
         "id": 10,
         "perf_name": "msr/tsc/",
         "name": "TSC",
@@ -51,7 +57,7 @@ events = [
     }
 ]
 
-other_events = [0, 10]
+other_events = [0, 1, 10]
 
 pinned_events = [20, 21, 22]
 
@@ -64,6 +70,10 @@ metrics = [
     {
         "metric": "CPU UTILIZATION",
         "expression": "e22 / e10"
+    },
+    {
+        "metric": "FREQUENCY",
+        "expression": "e20 / (e1 / 1000000000)"
     },
     {
         "metric": "CPI",
