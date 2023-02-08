@@ -177,3 +177,9 @@ class Controller:
             exit(-1)
         self.logger.info(f"logs for this run are saved in {target}")
 
+    def __exception_handler(self, e: BaseException):
+        """
+        Handle all possible exception (including Exit, Error and Warning) during the whole process of hperf. 
+        """
+        pass
+
