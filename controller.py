@@ -60,10 +60,6 @@ class Controller:
         This method covers the whole process of profiling.
         Call this method to start profiling for workloads.
         """
-        # TODO: add `-v`/`--version` option to print the version
-        # now it will always print at the first. 
-        self.logger.info(f"hperf {Controller.VERSION}")
-
         # step 1.
         self.__parse()
 
@@ -86,21 +82,26 @@ class Controller:
         # step 1.1. parse the original command line options and arguments
         self.configs = self.parser.parse_args(self.__argv)
 
-        # step 1.2. if verbosity is declared (`-v` option), change the threshold of log level to print to console:
+        # step 1.2. if `-V`/`--version` option is declared, print the version and exit
+        if "version" in self.configs:
+            print(f"hperf {Controller.VERSION}")
+            exit(0)
+
+        # step 1.3. if verbosity is declared (`-v` option), change the threshold of log level to print to console:
         # log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
         # for file: always > DEBUG, not affected by `-v` option
         # for console: > INFO (default), > DEBUG (if verbosity is declared)
         if "verbose" in self.configs:
             self.__handler_stream.setLevel(logging.DEBUG)
         
-        # step 1.3. validate the configurations
+        # step 1.4. validate the configurations
         # TODO: in future, more the validation of parsed configurations should be added here or in `OptParser`
         # if command is empty, exit the program
         if "command" not in self.configs:
             self.logger.error("workload is not specified")
             exit(-1)
         
-        # step 1.4. instantiate `Connector`
+        # step 1.5. instantiate `Connector`
         self.connector = self.__get_connector()
 
     def __get_connector(self) -> Connector:
