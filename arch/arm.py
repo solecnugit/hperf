@@ -71,6 +71,10 @@ metrics = [
         "expression": "e20 / e30"
     },
     {
+        "metric": "FREQUENCY",
+        "expression": "e20 / (e1 / 1000000000)"
+    },
+    {
         "metric": "L1I CACHE MPKI",
         "expression": "(1000 * e31) / e30"
     },
