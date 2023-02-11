@@ -2,12 +2,11 @@ from datetime import datetime
 from typing import Sequence, Union
 import subprocess
 import os
-import sys
 import socket
 import logging
 import re
 import paramiko
-from hperf_exception import ParamikoError
+from hperf_exception import ConnectorError
 
 
 class Connector:
@@ -244,10 +243,10 @@ class RemoteConnector(Connector):
             self.client.connect(self.hostname, self.port, self.username, self.password)
         except (paramiko.BadHostKeyException, paramiko.AuthenticationException, paramiko.SSHException) as e:
             self.client.close()
-            raise ParamikoError(f"SSH connection failed: {e.args[0]}")
+            raise ConnectorError(f"SSH connection failed: {e.args[0]}")
         except socket.error as e:
             self.client.close()
-            raise ParamikoError(f"SSH connection failed: {e.args[1]}")
+            raise ConnectorError(f"SSH connection failed: {e.args[1]}")
 
         # step 3. open a SFTP session
         self.sftp = self.client.open_sftp()
@@ -263,7 +262,7 @@ class RemoteConnector(Connector):
                 self.sftp.chdir(default_remote_tmp_dir)    # change working directory: ./.hperf/
             except IOError as e:
                 self.close()
-                raise ParamikoError(f"SFTP session failed: {e.args[0]}")
+                raise ConnectorError(f"SFTP session failed: {e.args[0]}")
             else:
                 for file in self.sftp.listdir("."):    # delete all files in ./.hperf/
                     try:
@@ -333,7 +332,7 @@ class RemoteConnector(Connector):
                 return output
         except paramiko.SSHException as e:
             self.close()
-            raise ParamikoError(f"Executing command {command} failed on remote: {e.args[0]}")
+            raise ConnectorError(f"Executing command {command} failed on remote: {e.args[0]}")
     
     def run_script(self, script: str) -> int:
         """

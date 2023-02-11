@@ -1,5 +1,17 @@
 """
-This module includes user-defined exceptions in hperf
+This module includes user-defined exceptions in hperf.
+Hierarchy of user-defined exceptions: 
+```
+BaseException
+|- ...
+|- Exception
+   |- HperfError
+      |- ParserError
+      |- ConnectorError
+      |- ProfilerError
+      |- AnalyzerError
+      |- LoggerError
+```
 """ 
 
 class HperfError(Exception):
@@ -9,13 +21,16 @@ class HperfError(Exception):
     def __str__(self) -> str:
         return self.message
 
-class ParamikoError(HperfError):
+class ParserError(HperfError):
+    pass
+
+class ConnectorError(HperfError):
     pass
 
 class ProfilerError(HperfError):
     pass
 
-class ParserError(HperfError):
+class AnalyzerError(HperfError):
     pass
 
 class LoggerError(HperfError):
