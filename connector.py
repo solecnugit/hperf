@@ -2,9 +2,12 @@ from datetime import datetime
 from typing import Sequence, Union
 import subprocess
 import os
+import sys
+import socket
 import logging
 import re
 import paramiko
+from hperf_exception import ParamikoError
 
 
 class Connector:
@@ -232,17 +235,19 @@ class RemoteConnector(Connector):
 
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy)   # for the first connection
+        
+        # raise exceptions: 
+        # - paramiko.BadHostKeyException: the server's host key could not be verified
+        # - paramiko.AuthenticationException: authentication failed
+        # - paramiko.SSHException: connecting or establishing an SSH session failed
         try:
             self.client.connect(self.hostname, self.port, self.username, self.password)
-        except paramiko.BadHostKeyException:
-            self.logger.error("the server's host key could not be verified")
-            exit(-1)
-        except paramiko.AuthenticationException:
-            self.logger.error("authentication failed")
-            exit(-1)
-        except paramiko.SSHException:
-            self.logger.error("connecting or establishing an SSH session failed")
-            exit(-1)
+        except (paramiko.BadHostKeyException, paramiko.AuthenticationException, paramiko.SSHException) as e:
+            self.client.close()
+            raise ParamikoError(f"SSH connection failed: {e.args[0]}")
+        except socket.error as e:
+            self.client.close()
+            raise ParamikoError(f"SSH connection failed: {e.args[1]}")
 
         # step 3. open a SFTP session
         self.sftp = self.client.open_sftp()
@@ -256,11 +261,15 @@ class RemoteConnector(Connector):
             self.logger.debug(f"directory {default_remote_tmp_dir} exists on the remote SUT")
             try:
                 self.sftp.chdir(default_remote_tmp_dir)    # change working directory: ./.hperf/
+            except IOError as e:
+                self.close()
+                raise ParamikoError(f"SFTP session failed: {e.args[0]}")
+            else:
                 for file in self.sftp.listdir("."):    # delete all files in ./.hperf/
-                    self.sftp.remove(file)
-            except IOError:
-                self.logger.error("SFTP session failed")
-                exit(-1)
+                    try:
+                        self.sftp.remove(file)
+                    except IOError as e:
+                        pass            
             finally:
                 self.sftp.chdir()    # reset working directory to ./
         else:    # directory ./.hperf/ does not exist on the remote SUT
@@ -313,7 +322,7 @@ class RemoteConnector(Connector):
             command: str = command_args
         try:
             self.logger.debug(f"execute command on remote: {command}")
-            _, stdout, _ = self.client.exec_command(command)
+            _, stdout, _ = self.client.exec_command(command)    # may raise paramiko.SSHException
             ret_code = stdout.channel.recv_exit_status()
             self.logger.debug(f"finished with exit code {ret_code}")
             if ret_code != 0:
@@ -322,14 +331,9 @@ class RemoteConnector(Connector):
                 output = stdout.read().decode("utf-8")
                 self.logger.debug(f"stdout of command {command}: \n{output}")
                 return output
-        except paramiko.SSHException:
-            self.logger.error("executing command through SSH connection failed")
-            self.client.close()
-            exit(-1)
-        except RuntimeError:
-            self.logger.error(f"executing command {command} failed")
-            self.client.close()
-            exit(-1)
+        except paramiko.SSHException as e:
+            self.close()
+            raise ParamikoError(f"Executing command {command} failed on remote: {e.args[0]}")
     
     def run_script(self, script: str) -> int:
         """
@@ -373,5 +377,16 @@ class RemoteConnector(Connector):
         """
         for file in self.sftp.listdir(self.remote_tmp_dir):
             remote_file_path = os.path.join(self.remote_tmp_dir, file)
-            self.sftp.get(remote_file_path, os.path.join(self.get_test_dir_path(), file))
-            self.logger.debug(f"get file from remote SUT: {remote_file_path}")
+            local_file_path = os.path.join(self.get_test_dir_path(), file)
+            self.sftp.get(remote_file_path, local_file_path)
+            self.logger.debug(f"get file from remote SUT to local test directory: {remote_file_path} -> {local_file_path}")
+
+    def close(self):
+        """
+        Close SSH / SFTP connection if it exists. 
+        This method is useful in `finally` blocks for releasing resources. 
+        """
+        if self.sftp:
+            self.sftp.close()
+        if self.client:
+            self.client.close()

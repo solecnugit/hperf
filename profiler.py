@@ -1,6 +1,7 @@
 from connector import Connector, LocalConnector, RemoteConnector
 from event_group import EventGroup
 import logging
+from hperf_exception import ProfilerError
 
 class Profiler:
     """
@@ -28,11 +29,7 @@ class Profiler:
         self.logger.info("start profiling")
         ret_code = self.connector.run_script(script)
         if ret_code != 0:
-            self.logger.error("executing profiling script on the SUT failed. check log files in the test directory.")
-            if isinstance(self.connector, RemoteConnector):
-                self.connector.sftp.close()
-                self.connector.client.close()
-            exit(-1)
+            raise ProfilerError("Executing profiling script on the SUT failed.")
         self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:

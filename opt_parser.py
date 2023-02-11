@@ -1,7 +1,9 @@
 from argparse import ArgumentParser, REMAINDER
 from typing import Sequence
 import logging
+import sys
 from getpass import getpass
+from hperf_exception import ParserError
 
 
 class OptParser:
@@ -77,13 +79,18 @@ class OptParser:
 
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
-        Parse the options and arguments passed from command line and return an instance of Connector. 
+        Parse and validate the options and arguments passed from command line and return an instance of `Connector`. 
         :param `argv`: a list of arguments
-        :return: a dict of configurations for this hperf run
+        :return: a dict of configurations for this run
+        :raises:
+            `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program 
+            `ParserError`: options and arguments are invalid 
         """
         configs = {}
 
         args = self.parser.parse_args(argv)
+        # Note: if `ArgumentParser` detect `-h`/`--help` option, it will print help message and raise a `SystemExit(0)` to exit the program.
+
         # TODO: for future implementation: if -f/--config-file option is specified,
         # load the JSON file and initialize config dict
         # if args.config:
@@ -93,16 +100,22 @@ class OptParser:
         # config specified in command line will overwrite the config defined in JSON file
 
         # check `-V`/`--version` option
+        # if it is declared, print the version and exit
         if args.version:
-            configs["version"] = True
+            with open("./VERSION") as f:
+                print(f.read())
+            sys.exit(0)
         
         # step 0. check verbosity
         if args.verbose:
             configs["verbose"] = True
 
         # step 1. workload command
+        # if command is empty, raise an exception and exit the program
         if args.command:
             configs["command"] = " ".join(args.command)
+        else:
+            raise ParserError("Workload is not specified.")
 
         # step 2. local / remote SUT (default local)
         if args.remote:
@@ -147,9 +160,7 @@ class OptParser:
                     for i in range(start_cpu_id, end_cpu_id + 1):
                         cpu_ids.append(i)
         except ValueError:
-            self.logger.error(
-                f"invalid argument {cpu_list} for -c/--cpu option")
-            exit(-1)
+            raise ParserError(f"Invalid argument {cpu_list} for -c/--cpu option")
 
         # make the list non-repetitive
         reduced_cpu_ids = list(set(cpu_ids))
@@ -158,9 +169,7 @@ class OptParser:
         # check if all cpu ids are vaild (non-negative)
         for cpu_id in reduced_cpu_ids:
             if cpu_id < 0:
-                self.logger.error(
-                    f"invalid argument {cpu_list} for -c/--cpu option")
-                exit(-1)
+                raise ParserError(f"Invalid argument {cpu_list} for -c/--cpu option")
         return reduced_cpu_ids
 
     def __parse_remote_str(self, ssh_conn_str: str) -> dict:
@@ -181,8 +190,7 @@ class OptParser:
             if remote_configs["username"] == "" or remote_configs["hostname"] == "":
                 raise ValueError
         except (IndexError, ValueError):
-            self.logger.error(f"invalid SSH connection string: {ssh_conn_str}")
-            exit(-1)
+            raise ParserError(f"Invalid SSH connection string: {ssh_conn_str}")
 
         # get the password by command line interaction
         remote_configs["password"] = getpass(f'connect to {remote_configs["hostname"]}, '
