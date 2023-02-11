@@ -84,12 +84,13 @@ class OptParser:
         :return: a dict of configurations for this run
         :raises:
             `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program 
-            `ParserError`: options and arguments are invalid 
+            `ParserError`: if options and arguments are invalid 
         """
         configs = {}
 
         args = self.parser.parse_args(argv)
-        # Note: if `ArgumentParser` detect `-h`/`--help` option, it will print help message and raise a `SystemExit(0)` to exit the program.
+        # Note: if `ArgumentParser` detect `-h`/`--help` option, 
+        # it will print help message and raise a `SystemExit` exception to exit the program.
 
         # TODO: for future implementation: if -f/--config-file option is specified,
         # load the JSON file and initialize config dict
@@ -147,6 +148,8 @@ class OptParser:
         e.g. if `cpu_list = '2,4-8'`, the method will return `[2, 4, 5, 6, 7, 8]`
         :param `cpu_list`: a string of cpu list
         :return: a list of cpu ids (the elements are non-negative and non-repetitive)
+        :raises:
+            `ParserError`: if the string of cpu list is invalid (e.g. negative cpu id)
         """
         cpu_ids = []
         cpu_id_slices = cpu_list.split(",")
@@ -177,6 +180,8 @@ class OptParser:
         Parse the SSH connection string with the format of `username@hostname`, then ask user to enter the password.
         :param `ssh_conn_str`: SSH connection string
         :return: a dict of remote host informations which can be updated to `configs` in method `.parse_args()`
+        :raises:
+            `ParserError`: if the SSH connection string is invalid 
         """
         # TODO: try to parse all information for the remote SSH connection from the parameter of -r / --remote option.
         # e.g. ssh_conn_str = "tongyu@ampere.solelab.tech"

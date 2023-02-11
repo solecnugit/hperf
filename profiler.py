@@ -23,7 +23,11 @@ class Profiler:
 
     def profile(self):
         """
-        Generate and execute profiling script on SUT.
+        Generate and execute profiling script on SUT. 
+        :raises:
+            `ConnectorError`: for `RemoteConnector`, 
+            if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT
+            `ProfilerError`: if the returned code of executing script does not equal to 0 
         """
         script = self.__get_profile_script()
         self.logger.info("start profiling")

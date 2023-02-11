@@ -63,9 +63,9 @@ class Controller:
         # `Controller` is responsible for unified exceptional handling
         try:
             # step 1.
-            self.__parse()
+            self.__parse()    # may raise `SystemExit`, `ParserError` or `ConnectorError`
             # step 2.
-            self.__profile()
+            self.__profile()    # may raise `SystemExit`, `ConnectorError` or `ProfilerError`
             # step 3.
             self.__analyze()
         except SystemExit as e:
@@ -81,9 +81,13 @@ class Controller:
         Parse the original command line options and arguments (`.argv`) and then get the configuration dict (`.configs`). 
         Based on the configuration dict, validate the configurations. 
         If passed the validation, instantiate `Connector` (`.connector`). 
+        :raises:
+            `SystemExit`: if `-V` and `-h` options is declared
+            `ParserError`: if options and arguments are invalid
+            `ConnectorError`: for `RemoteConnector`, if fail to establish connection to remote SUT
         """
         # step 1.1. parse and validate the original command line options and arguments
-        self.configs = self.parser.parse_args(self.__argv)
+        self.configs = self.parser.parse_args(self.__argv)    # may raise `SystemExit` or `ParserError`
 
         # step 1.2. if verbosity is declared (`-v` option), change the threshold of log level to print to console:
         # log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
@@ -93,13 +97,15 @@ class Controller:
             self.__handler_stream.setLevel(logging.DEBUG)
 
         # step 1.3. instantiate `Connector`
-        self.connector = self.__get_connector()
+        self.connector = self.__get_connector()    # may raise `ConnectorError`
 
     def __get_connector(self) -> Connector:
         """
         Depend on the parsed configurations (`.configs`), instantiate a `LocalConnector` or `RemoteConnector` (`.connector`).  
         `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which defined useful methods for other modules 
         to interact with SUT, where the former is for local SUT while the latter is for remote SUT. 
+        :raises:
+            `ConnectorError`: for `RemoteConnector`, if fail to establish connection to remote SUT
         """
         # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]'
         # if the parsed temporary directory is invalid (cannot be accessed).
@@ -118,6 +124,11 @@ class Controller:
         2) generate and execute profiling script on SUT and save the raw performance data in the test directory 
         (a sub-directory in the temporary directory which can be obtained by `.connector.get_test_dir_path()` method), 
         3) if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host. 
+
+        :raises:
+            `SystemExit`: if user choose not to continue profiling when sanity check fails
+            `ConnectorError`: 
+            `ProfilerError`: 
         """
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
@@ -137,7 +148,7 @@ class Controller:
             self.logger.info("sanity check passed.")
 
         # step 2.2. profile
-        self.profiler.profile()
+        self.profiler.profile()    # may raise `ProfilerError` or `ConnectorError` (for `RemoteConnector`)
 
         # step 2.3. for RemoteConnector, close SSH / SFTP connection between remote SUT and local host
         if isinstance(self.connector, RemoteConnector):
@@ -165,6 +176,8 @@ class Controller:
             self.logger.warning(f"fail to copy log file {source} to the test directory {target}")
         self.logger.info(f"logs for this run are saved in {target}")
 
+    # the following method is responsible for unified exception handling ... 
+    
     def __system_exit_handler(self, e: SystemExit):
         """
         Handlle all possible `SystemExit` exceptions during the whole process of hperf.
