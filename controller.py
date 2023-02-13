@@ -81,6 +81,8 @@ class Controller:
         except Exception as e:
             self.__exception_handler(e)
         finally: 
+            # if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host, 
+            # no matter whether the program exit normally or abnormally.  
             if isinstance(self.connector, RemoteConnector):
                 self.connector.close()
                 self.logger.debug("RemoteConnector closed.")
@@ -134,7 +136,6 @@ class Controller:
         1) run sanity check, 
         2) generate and execute profiling script on SUT and save the raw performance data in the test directory 
         (a sub-directory in the temporary directory which can be obtained by `.connector.get_test_dir_path()` method), 
-        3) if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host. 
 
         :raises:
             `SystemExit`: if user choose not to continue profiling when sanity check fails 
