@@ -31,7 +31,7 @@ class Profiler:
         """
         script = self.__get_profile_script()
         self.logger.info("start profiling")
-        ret_code = self.connector.run_script(script)
+        ret_code = self.connector.run_script(script)    # may raise `ConnectorError`
         if ret_code != 0:
             raise ProfilerError("Executing profiling script on the SUT failed.")
         self.logger.info("end profiling")
@@ -42,9 +42,11 @@ class Profiler:
         Since the collection of performance data requires exclusive usage of PMCs, 
         it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running. 
         Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC, 
-        it should also be checked.
+        so that it will also be checked.
         :return: if the SUT passes the sanity check, it will return `True`, 
         else it will return `False` and record the information through `Logger`.
+        :raises:
+            `ConnectorError`: for `RemoteConnector`, if fail to execute command for sanity check on remote SUT
         """
         sanity_check_flag = True
 
@@ -56,7 +58,7 @@ class Profiler:
         ]    # process command pattern
         for process in process_check_list:
             process_check_cmd = f"ps -ef | awk '{{print $8}}' | grep {process}"
-            output = self.connector.run_command(process_check_cmd)
+            output = self.connector.run_command(process_check_cmd)    # may raise `ConnectorError`
             if output:
                 process_cmd = output
                 self.logger.warning(f"sanity check: process may interfere measurement exists. {process_cmd}")
@@ -64,7 +66,7 @@ class Profiler:
         # 2. for x86_64 platform, check the NMI watchdog
         if self.event_groups.isa == "x86_64":
             nmi_watchdog_check_cmd = ["cat", "/proc/sys/kernel/nmi_watchdog"]
-            output = self.connector.run_command(nmi_watchdog_check_cmd)
+            output = self.connector.run_command(nmi_watchdog_check_cmd)    # may raise `ConnectorError`
             if int(output) == 1:
                 self.logger.warning(f"sanity check: NMI watchdog is enabled.")
                 sanity_check_flag = False
