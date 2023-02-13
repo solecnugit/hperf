@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+from datetime import datetime
+import re
 from shutil import copyfile
 from typing import Sequence
 from opt_parser import OptParser
@@ -20,8 +22,8 @@ class Controller:
     def __init__(self, argv: Sequence[str]):
         """
         Constructor of `Controller`.
-        :param `argv`: options and arguments passed from command line when invoke `hperf`. 
-        Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`).
+        :param `argv`: Options and arguments passed from command line when invoke `hperf`. 
+        Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`). 
         """
         self.__argv = argv    # (private) the original command line options and parameters
 
@@ -33,8 +35,8 @@ class Controller:
         self.analyzer: Analyzer = None
         self.event_groups: EventGroup = None
 
-        # initialize `Logger`
-        # Note: Since `Logger` follows singleton pattern,
+        # Initialize `Logger`
+        # **Note**: Since `Logger` follows singleton pattern,
         # it is unnecessary to pass the reference of the instance of `Logger` to other classes throught their constructor.
         # When we need to log records, use the method `logging.getLogger(<name>)` provided by module logging to get the instance of `Logger`,
         # where it will get the very same instance of `Logger` as long as the `<name>` is the same.
@@ -42,14 +44,14 @@ class Controller:
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
 
-        # logs will output to both console and file
-        # [1] for console output of logs
+        # Logs will output to both console and file
+        # [1] For console output of logs
         self.__handler_stream = logging.StreamHandler()
         self.__handler_stream.setFormatter(formatter)
         self.__handler_stream.setLevel(logging.INFO)    # logs with level above INFO will be printed to console by default
         self.logger.addHandler(self.__handler_stream)
 
-        # [2] for file output of logs
+        # [2] For file output of logs
         self.log_file_path = "/tmp/hperf/hperf.log"
         try:
             os.makedirs("/tmp/hperf/", exist_ok=True)
@@ -61,19 +63,25 @@ class Controller:
         self.__handler_file.setFormatter(formatter)
         self.logger.addHandler(self.__handler_file)
 
+        # SEE: `Controller.__prework()`
+        self.tmp_dir: str = ""    # user-specified temporary directory for saving files for different runs
+        self.test_id: str = ""    # a sub-directory in temporary directory for a single run
+
     def hperf(self):
         """
         This method covers the whole process of profiling.
         Call this method to start profiling for workloads.
         """
-        # `Controller` is responsible for unified exceptional handling
         try:
             # step 1.
-            self.__parse()    # may raise `SystemExit`, `ParserError` or `ConnectorError`
+            self.__parse()    # may raise `SystemExit` or `ParserError`
             # step 2.
-            self.__profile()    # may raise `SystemExit`, `ConnectorError` or `ProfilerError`
+            self.__prework()
             # step 3.
+            self.__profile()    # may raise `SystemExit`, `ConnectorError` or `ProfilerError`
+            # step 4.
             self.__analyze()
+        # `Controller` is responsible for unified exceptional handling ... 
         except SystemExit as e:
             self.__system_exit_handler(e)
         except KeyboardInterrupt:
@@ -91,13 +99,12 @@ class Controller:
 
     def __parse(self):
         """
-        Parse the original command line options and arguments (`.argv`) and then get the configuration dict (`.configs`). 
-        Based on the configuration dict, validate the configurations. 
-        If passed the validation, instantiate `Connector` (`.connector`). 
+        Parse and validate the original command line options and arguments (`.argv`) 
+        and then get the configuration dict (`.configs`). 
+        If `-v`/`--verbose` option is declared, the threshold of log level will change. 
         :raises:
-            `SystemExit`: if `-V` and `-h` options is declared
-            `ParserError`: if options and arguments are invalid
-            `ConnectorError`: for `RemoteConnector`, if fail to establish connection to remote SUT
+            `SystemExit`: If `-V` and `-h` options is declared. In that case, hperf will print corrsponding information and exit. 
+            `ParserError`: If options and arguments are invalid
         """
         # step 1.1. parse and validate the original command line options and arguments
         self.configs = self.parser.parse_args(self.__argv)    # may raise `SystemExit` or `ParserError`
@@ -109,25 +116,96 @@ class Controller:
         if "verbose" in self.configs:
             self.__handler_stream.setLevel(logging.DEBUG)
 
-        # step 1.3. instantiate `Connector`
-        self.connector = self.__get_connector()    # may raise `ConnectorError`
+    def __prework(self):
+        """
+        Complete some preworks based on the valid configurations (`.configs`) before profiling. 
+        The following steps will be conducted based on the parsed configurations: 
+        1) create an unique test directory in the temporary directory (`.tmp_dir`)
+        2) instantiate a `LocalConnector` or `RemoteConnector` (`.connector`)
 
-    def __get_connector(self) -> Connector:
-        """
-        Depend on the parsed configurations (`.configs`), instantiate a `LocalConnector` or `RemoteConnector` (`.connector`).  
-        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which defined useful methods for other modules 
+        The temporary directory (`.configs["tmp_dir"]`) specified by command line options `--tmp-dir` (`/tmp/hperf/` by default). 
+        The test directory is for this run of hperf and used to save profiling scripts, raw performance data, analysis results, log file, etc. 
+        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which implement some useful methods for other modules 
         to interact with SUT, where the former is for local SUT while the latter is for remote SUT. 
+
         :raises:
-            `ConnectorError`: for `RemoteConnector`, if fail to establish connection to remote SUT
+            `ConnectorError`: For `RemoteConnector`, if fail to establish connection to remote SUT
         """
-        # Note: the instantiation of 'Connector' may change the value of 'self.configs["tmp_dir"]'
-        # if the parsed temporary directory is invalid (cannot be accessed).
-        if self.configs["host_type"] == "local":
-            self.logger.debug("SUT is on local host")
-            return LocalConnector(self.configs)
+        # step 2.1. create an unique test directory in the temporary directory
+        #   step 2.1.1 access or create the temporary directory specified by user
+        selected_tmp_dir = self.configs["tmp_dir"]
+        #     [case 1] if the temporary directory exists, check the R/W permission
+        if os.path.exists(selected_tmp_dir):
+            if os.access(selected_tmp_dir, os.R_OK | os.W_OK):
+                self.tmp_dir = os.path.abspath(selected_tmp_dir)
+                self.logger.debug(f"set temporary directory: {self.tmp_dir} (already exists)")
+            else:
+                bad_tmp_dir = os.path.abspath(selected_tmp_dir)
+                self.logger.warning(f"invalid temporary directory: {bad_tmp_dir} (already exists but has no R/W permission)")
+                self.logger.warning("reset temporary directory: '/tmp/hperf/'")
+                os.makedirs("/tmp/hperf/", exist_ok=True)
+                # **Note**: this action will change the value of `configs["tmp_dir"]`
+                self.tmp_dir = self.configs["tmp_dir"] = "/tmp/hperf/"
+        #     [case 2] if the temporary directory does not exist, try to create the directory
         else:
-            self.logger.debug("SUT is on remote host")
-            return RemoteConnector(self.configs)    # may raise `ConnectorError`
+            try:
+                os.makedirs(selected_tmp_dir)
+                self.tmp_dir = os.path.abspath(selected_tmp_dir)
+                self.logger.debug(f"success to create the temporary directory {self.tmp_dir}")
+            except OSError:
+                bad_tmp_dir = os.path.abspath(selected_tmp_dir)
+                self.logger.warning(f"invalid temporary directory: {bad_tmp_dir} (fail to create the temporary directory)")
+                self.logger.warning("reset temporary directory: '/tmp/hperf/'")
+                os.makedirs("/tmp/hperf/", exist_ok=True)
+                # **Note**: this action will change the value of 'configs["tmp_dir"]'
+                self.tmp_dir = self.configs["tmp_dir"] = "/tmp/hperf/"
+        
+        #   step 2.1.2. find a unique test id (`.__find_test_id()`) and create test directory
+        # search the temporary directory (`.tmp_dir`) and get a string with an unique test id, 
+        # then create a sub-directory named by this string in the temporary directory for saving files and results.
+        self.test_id = self.__find_test_id()
+        os.makedirs(self.get_test_dir_path())
+        self.logger.info(f"local test directory: {self.get_test_dir_path()}")
+
+        # step 2.2. instantiate a `LocalConnector` or `RemoteConnector`
+        if self.configs["host_type"] == "local":
+            self.logger.debug("SUT is on local")
+            self.connector = LocalConnector(self.get_test_dir_path())
+        else:
+            self.logger.debug("SUT is on remote")
+            self.connector = RemoteConnector(self.get_test_dir_path(), 
+                                             hostname=self.configs["hostname"],
+                                             username=self.configs["username"],
+                                             password=self.configs["password"])    # may raise `ConnectorError`
+
+    def __find_test_id(self) -> str:
+        """
+        Search the temporary directory (`.tmp_dir`) and return a string with an unique test directory.
+
+        e.g. In the temporary directory, there are many sub-directory named `<date>_test<id>` for different runs.
+        If `20221206_test001` and `202211206_test002` are exist, it will return `202211206_test003`.
+        :return: a directory name with an unique test id for today
+        """
+        today = datetime.now().strftime("%Y%m%d")
+        max_id = 0
+        pattern = f"{today}_test(\d+)"
+        for item in os.listdir(self.tmp_dir):
+            path = os.path.join(self.tmp_dir, item)
+            if os.path.isdir(path):
+                obj = re.search(pattern, path)
+                if obj:
+                    found_id = int(obj.group(1))
+                    if found_id > max_id:
+                        max_id = found_id
+        test_id = f"{today}_test{str(max_id + 1).zfill(3)}"
+        return test_id
+
+    def get_test_dir_path(self) -> str:
+        """
+        Get the abusolute path of the unique test directory for this test. 
+        :return: an abusolute path of the unique test directory for this test
+        """
+        return os.path.join(self.tmp_dir, self.test_id)
 
     def __profile(self):
         """
@@ -145,7 +223,7 @@ class Controller:
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
 
-        # step 2.1. sanity check
+        # step 3.1. sanity check
         # if sanity check does not pass, let user choose whether to continue profiling.
         if not self.profiler.sanity_check():
             select = input("Detected some problems which may interfere profiling. Continue profiling? [y|N] ")
@@ -153,27 +231,21 @@ class Controller:
                 if select == "y" or select == "Y":
                     break
                 elif select == "n" or select == "N":
-                    sys.exit(0)
+                    sys.exit(0)    # raise `SystemExit`
                 else:
                     select = input("please select: [y|N] ")
         else:
             self.logger.info("sanity check passed.")
 
-        # step 2.2. profile
+        # step 3.2. profile
         self.profiler.profile()    # may raise `ProfilerError` or `ConnectorError` (for `RemoteConnector`)
-
-        # step 2.3. for `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host
-        # Note: this step is moved to the `finally` block in `.hperf()`,
-        # so that whether hperf exit normally or abnormally the `RemoteConnector` will be closed.
-        # if isinstance(self.connector, RemoteConnector):
-        #     self.connector.close()
 
     def __analyze(self):
         """
         Analyze the raw performance data which is generated by `Profiler`. 
         Then output the report of performance metrics to the test directory. 
         """
-        self.analyzer = Analyzer(self.connector.get_test_dir_path(), self.configs, self.event_groups)
+        self.analyzer = Analyzer(self.get_test_dir_path(), self.configs, self.event_groups)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
 
     def __save_log_file(self):
@@ -183,7 +255,7 @@ class Controller:
         and copy to the test directory for the convenience of users. 
         """
         source = self.log_file_path
-        target = os.path.join(self.connector.get_test_dir_path(), "hperf.log")
+        target = os.path.join(self.get_test_dir_path(), "hperf.log")
         try:
             copyfile(source, target)
         except IOError:
