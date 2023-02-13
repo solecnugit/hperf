@@ -12,7 +12,8 @@ from event_group import EventGroup
 
 class Controller:
     """
-    `Controller` is responsible for the whole process control of hperf.
+    `Controller` is responsible for the whole process control of hperf. 
+    Beside this, it also responsible for unified exception handling and logging. 
     Users can conduct profiling for workload by calling `hperf()` method.
     """
 
@@ -75,9 +76,14 @@ class Controller:
             self.__analyze()
         except SystemExit as e:
             self.__system_exit_handler(e)
+        except KeyboardInterrupt:
+            self.__keyboard_interrupt_handler()
         except Exception as e:
             self.__exception_handler(e)
         finally: 
+            if isinstance(self.connector, RemoteConnector):
+                self.connector.close()
+                self.logger.debug("RemoteConnector closed.")
             if self.connector:
                 self.__save_log_file()
 
@@ -119,7 +125,7 @@ class Controller:
             return LocalConnector(self.configs)
         else:
             self.logger.debug("SUT is on remote host")
-            return RemoteConnector(self.configs)
+            return RemoteConnector(self.configs)    # may raise `ConnectorError`
 
     def __profile(self):
         """
@@ -131,9 +137,9 @@ class Controller:
         3) if the `.connector` is an instance of `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host. 
 
         :raises:
-            `SystemExit`: if user choose not to continue profiling when sanity check fails
-            `ConnectorError`: 
-            `ProfilerError`: 
+            `SystemExit`: if user choose not to continue profiling when sanity check fails 
+            `ConnectorError`: if encounter errors when executing command or script on SUT
+            `ProfilerError`: if the profiling is not successful on SUT
         """
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
@@ -155,9 +161,11 @@ class Controller:
         # step 2.2. profile
         self.profiler.profile()    # may raise `ProfilerError` or `ConnectorError` (for `RemoteConnector`)
 
-        # step 2.3. for RemoteConnector, close SSH / SFTP connection between remote SUT and local host
-        if isinstance(self.connector, RemoteConnector):
-            self.connector.close()
+        # step 2.3. for `RemoteConnector`, close SSH / SFTP connection between remote SUT and local host
+        # Note: this step is moved to the `finally` block in `.hperf()`,
+        # so that whether hperf exit normally or abnormally the `RemoteConnector` will be closed.
+        # if isinstance(self.connector, RemoteConnector):
+        #     self.connector.close()
 
     def __analyze(self):
         """
@@ -185,15 +193,21 @@ class Controller:
     
     def __system_exit_handler(self, e: SystemExit):
         """
-        Handlle all possible `SystemExit` exceptions during the whole process of hperf.
-        `SystemExit` is triggered by `sys.exit(object)` statement. 
-        In hperf, the object is defined as a 2-tuple `(code, message)`, 
+        Handle all possible `SystemExit` exceptions during the whole process of hperf.
+        `SystemExit` is triggered by `sys.exit(code)` statement, 
         where `code == 0` represents the program exits normally. 
         """
         if e.args[0] == 0:
             self.logger.debug("Program exits normally.")
         else:
             self.logger.error("Program exits abnormally.")
+
+    def __keyboard_interrupt_handler(self):
+        """
+        Handle all possible `KeyboardInterrupt` exceptions during the whole process of hperf. 
+        `KeyboardInterrupt` is triggered by `Ctrl + C` in terminal. 
+        """
+        self.logger.error("Keyboard Interrupt.")
     
     def __exception_handler(self, e: Exception):
         """
@@ -203,5 +217,3 @@ class Controller:
         `Exception` has an attribute `args` where `args[0]` is the message. 
         """
         self.logger.error(f"{e.args[0]}")
-        if isinstance(self.connector, RemoteConnector):
-            self.connector.close()
