@@ -187,7 +187,9 @@ class Controller:
             copyfile(source, target)
         except IOError:
             self.logger.warning(f"fail to copy log file {source} to the test directory {target}")
-        self.logger.info(f"logs for this run are saved in {target}")
+            self.logger.info(f"logs for this run are saved in {source} temporarily")
+        else:
+            self.logger.info(f"logs for this run are saved in {target}")
 
     # the following method is responsible for unified exception handling ... 
     
