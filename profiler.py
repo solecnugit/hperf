@@ -82,10 +82,9 @@ class Profiler:
         # however, for remote SUT, raw performance data should be output to the remote temporary which can be accessd on remote SUT, 
         # then pull the data to the local test directory. 
         if isinstance(self.connector, LocalConnector):
-            perf_dir = self.connector.get_test_dir_path()
+            perf_dir = self.connector.test_dir
         else:
-            self.connector: RemoteConnector
-            perf_dir = self.connector.remote_tmp_dir
+            perf_dir = self.connector.remote_test_dir
 
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={perf_dir}\n'
