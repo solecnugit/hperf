@@ -50,7 +50,12 @@ class Controller:
 
         # [2] for file output of logs
         self.log_file_path = "/tmp/hperf/hperf.log"
-        self.__handler_file = logging.FileHandler(self.log_file_path, "w")
+        try:
+            os.makedirs("/tmp/hperf/", exist_ok=True)
+            self.__handler_file = logging.FileHandler(self.log_file_path, "w")
+        except Exception:
+            print("Initialization failure.")
+            sys.exit(-1)
         self.__handler_file.setLevel(logging.DEBUG)    # all logs will be writen to the log file by default
         self.__handler_file.setFormatter(formatter)
         self.logger.addHandler(self.__handler_file)
