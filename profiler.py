@@ -2,6 +2,7 @@ from connector import Connector, LocalConnector, RemoteConnector
 from event_group import EventGroup
 import logging
 from hperf_exception import ProfilerError
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class Profiler:
     """
@@ -29,11 +30,27 @@ class Profiler:
             if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT
             `ProfilerError`: if the returned code of executing script does not equal to 0 
         """
-        script = self.__get_profile_script()
+        perf_script = self.__get_perf_script()
+        sar_script = self.__get_sar_script()
+
         self.logger.info("start profiling")
-        ret_code = self.connector.run_script(script)    # may raise `ConnectorError`
-        if ret_code != 0:
+        
+        abnormal_flag = False
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            perf_task = executor.submit(self.connector.run_script, perf_script, "perf.sh")
+            sar_task = executor.submit(self.connector.run_script, sar_script, "sar.sh")
+
+            for future in as_completed([perf_task, sar_task]):
+                ret_code = future.result()
+                if ret_code != 0:
+                    abnormal_flag = True
+        
+        if isinstance(self.connector, RemoteConnector):
+            self.connector.pull_remote()
+        
+        if abnormal_flag:
             raise ProfilerError("Executing profiling script on the SUT failed.")
+        
         self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:
@@ -73,9 +90,9 @@ class Profiler:
 
         return sanity_check_flag
     
-    def __get_profile_script(self) -> str:
+    def __get_perf_script(self) -> str:
         """
-        Based on the parsed configuration, generate the string of shell script for profiling.
+        Based on the parsed configuration, generate the string of shell script for profiling by perf.
         :return: a string of shell script for profiling
         """
         # for local SUT, output raw performance data to the test directory directly will be fine. 
@@ -87,12 +104,40 @@ class Profiler:
             perf_dir = self.connector.remote_test_dir
         else:
             raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
-
+        
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={perf_dir}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
-        self.logger.debug("profiling script: \n" + script)
+        self.logger.debug("profiling script by perf: \n" + script)
+        return script
+
+    def __get_sar_script(self) -> str:
+        """
+        Based on the parsed configuration, generate the string of shell script for profiling by sar.
+        :return: a string of shell script for profiling
+        """
+        # for local SUT, output raw performance data to the test directory directly will be fine. 
+        # however, for remote SUT, raw performance data should be output to the remote temporary which can be accessd on remote SUT, 
+        # then pull the data to the local test directory. 
+        if isinstance(self.connector, LocalConnector):
+            sar_dir = self.connector.test_dir
+        elif isinstance(self.connector, RemoteConnector):
+            sar_dir = self.connector.remote_test_dir
+        else:
+            raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
+        
+        script = "#!/bin/bash\n"
+        script += f'TMP_DIR={sar_dir}\n'
+        script += 'sar_binary="$TMP_DIR"/sar_binary\n'
+        script += 'sar_result="$TMP_DIR"/sar_result\n'
+        script += 'sar -o "$sar_binary" -r 1 5\n'
+        script += 'sadf -d "$sar_binary" | '
+        script += "sed 's/;/,/g' "
+        script += '> "$sar_result"\n'
+        script += 'rm -f "$sar_binary"\n'
+
+        self.logger.debug("profiling script by sar: \n" + script)
         return script
