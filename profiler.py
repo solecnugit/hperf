@@ -83,8 +83,10 @@ class Profiler:
         # then pull the data to the local test directory. 
         if isinstance(self.connector, LocalConnector):
             perf_dir = self.connector.test_dir
-        else:
+        elif isinstance(self.connector, RemoteConnector):
             perf_dir = self.connector.remote_test_dir
+        else:
+            raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
 
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={perf_dir}\n'
