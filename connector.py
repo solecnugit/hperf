@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Sequence, Union
 import subprocess
 import os
@@ -18,7 +17,7 @@ class Connector:
     def __init__(self, test_dir: str, **conn_info) -> None:
         pass
 
-    def run_script(self, script: str) -> int:
+    def run_script(self, script: str, file_name: str) -> int:
         pass
 
     def run_command(self, command_args: Union[Sequence[str], str]) -> str:
@@ -38,14 +37,15 @@ class LocalConnector(Connector):
         self.logger = logging.getLogger("hperf")
         self.test_dir = test_dir
 
-    def run_script(self, script: str) -> int:
+    def run_script(self, script: str, file_name: str) -> int:
         """
         Create and run a script on SUT, then wait for the script finished. 
         If the returned code is not eqaul to 0, it will generate a debug log message. 
         :param `script`: a string of shell script
+        :param `file_name`: file name of the shell script generated in test directory
         :return: the returned code of executing the shell script
         """
-        script_path = self.__generate_script(script)
+        script_path = self.__generate_script(script, file_name)
         self.logger.debug(f"run script: {script_path}")
         process = subprocess.Popen(
             ["bash", f"{script_path}"], stdout=subprocess.PIPE)
@@ -56,13 +56,14 @@ class LocalConnector(Connector):
         self.logger.debug(f"finish script: {script_path}")
         return ret_code
 
-    def __generate_script(self, script: str) -> str:
+    def __generate_script(self, script: str, file_name: str) -> str:
         """
         Generate a profiling script on SUT. 
         :param `script`: a string of shell script
+        :param `file_name`: file name of the shell script generated in test directory
         :return: path of the script on the SUT
         """
-        script_path = os.path.join(self.test_dir, "perf.sh")
+        script_path = os.path.join(self.test_dir, file_name)
         with open(script_path, 'w') as f:
             f.write(script)
         self.logger.debug(f"generate script: {script_path}")
@@ -101,7 +102,10 @@ class RemoteConnector(Connector):
         The remote temporary directory is named `.remote_test_dir`
 
         :param `test_dir`: path of the test directory for this run, which can be obtained by `Controller.get_test_dir_path()` 
-        :param `conn_info`: keyword arguments for remote SSH connection
+        :param `conn_info`: keyword arguments for remote SSH connection: 
+            `hostname`: the server to connect to
+            `username`: the username to authenticate as
+            `password`: used for password authentication
         :raises:
             `ConnectorError`: if encounter errors during the SSH / SFTP connection to remote SUT by `paramiko` module
         """
@@ -197,17 +201,18 @@ class RemoteConnector(Connector):
             self.close()
             raise ConnectorError(f"Executing command {command} failed on remote SUT: {e.args[0]}")
     
-    def run_script(self, script: str) -> int:
+    def run_script(self, script: str, file_name: str) -> int:
         """
         Create and run a script on SUT, then wait for the script finished. 
         If the returned code is not eqaul to 0, it will generate a debug log message. 
         :param `script`: a string of shell script
+        :param `file_name`: file name of the shell script generated in remote test directory
         :return: the returned code of executing the shell script
         :raises:
             `ConnectorError`: if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT
         """
         # step 1. generate a script on remote SUT
-        remote_script_path = self.__generate_script(script)    # may raise `ConnectorError`
+        remote_script_path = self.__generate_script(script, file_name)    # may raise `ConnectorError`
 
         # step 2. run the script by bash
         try:
@@ -224,20 +229,21 @@ class RemoteConnector(Connector):
             self.logger.debug(f"executing script {remote_script_path} with an exit code of {ret_code}")
         self.logger.debug(f"finish script: {remote_script_path}")
 
-        # step 3. pull files from remote SUT for following analyzing
-        self.__pull_remote()    # may raise `ConnectorError`
+        # # step 3. pull files from remote SUT for following analyzing
+        # self.__pull_remote()    # may raise `ConnectorError`
         
         return ret_code
 
-    def __generate_script(self, script: str) -> str:
+    def __generate_script(self, script: str, file_name: str) -> str:
         """
         Generate a profiling script on SUT. 
         :param `script`: the string of shell script
+        :param `file_name`: file name of the shell script generated in remote test directory
         :return: path of the script on the SUT
         :raises:
             `ConnectorError`: if script fails to be generated on remote SUT
         """
-        remote_script_path = os.path.join(self.remote_test_dir, "perf.sh")
+        remote_script_path = os.path.join(self.remote_test_dir, file_name)
         try:
             with self.sftp.open(remote_script_path, "w") as f:    # may raise `IOError`
                 f.write(script)
@@ -246,7 +252,7 @@ class RemoteConnector(Connector):
         self.logger.debug(f"generate script in remote temporary directory: {remote_script_path}")
         return remote_script_path
 
-    def __pull_remote(self):
+    def pull_remote(self):
         """
         Pull all files to the test directory (a sub-directory in local temporary directory) from remote temporary directory. 
         :raises:
