@@ -9,4 +9,4 @@ dependencies:
   - pandas
   - numpy
   - paramiko
-  - cryptography=3.4.8
+  - cryptography>=3.4.0,<35.0.0
