@@ -145,7 +145,7 @@ class RemoteConnector(Connector):
         
         # step 4. create a test directory on the remote SUT through SFTP session
         # the test directory is './.hperf/' by default. if it does not exist, hperf will create the directory.
-        default_remote_test_dir = "./.hperf/"
+        default_remote_test_dir = "./.hperf"
         # the initial working directory is "~/" 
         file_list = self.sftp.listdir(".")    # list all files (including directories) in current working directory
         if ".hperf" in file_list:    # directory ./.hperf/ exists on the remote SUT
