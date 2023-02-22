@@ -1,30 +1,22 @@
-from typing import Sequence, Union
-import subprocess
-import os
-import socket
 import logging
 import paramiko
+import socket
+import os
+import subprocess
+from typing import Sequence, Union
 import threading
-from hperf_exception import ConnectorError
 
+class HperfError(Exception):
+    def __init__(self, message) -> None:
+        self.message = message
 
-class Connector:
-    """
-    The interface of `Connector`.
-    `Connector` provides various useful method for executing commands or shell scripts.
-    """
+    def __str__(self) -> str:
+        return self.message
 
-    def __init__(self, test_dir: str, **conn_info) -> None:
-        pass
+class ConnectorError(HperfError):
+    pass
 
-    def run_script(self, script: str, file_name: str) -> int:
-        pass
-
-    def run_command(self, command_args: Union[Sequence[str], str]) -> str:
-        pass
-
-
-class LocalConnector(Connector):
+class LocalConnector:
     """
     `LocalConnector` is extended from `Connector`, which provide useful method for executing commands or shell scripts on local SUT.
     """
@@ -42,7 +34,6 @@ class LocalConnector(Connector):
         Create and run a script on SUT, then wait for the script finished. 
         If the returned code is not eqaul to 0, it will generate a debug log message. 
         :param `script`: a string of shell script
-        :param `file_name`: file name of the shell script generated in test directory
         :return: the returned code of executing the shell script
         """
         script_path = self.__generate_script(script, file_name)
@@ -60,7 +51,6 @@ class LocalConnector(Connector):
         """
         Generate a profiling script on SUT. 
         :param `script`: a string of shell script
-        :param `file_name`: file name of the shell script generated in test directory
         :return: path of the script on the SUT
         """
         script_path = os.path.join(self.test_dir, file_name)
@@ -83,8 +73,8 @@ class LocalConnector(Connector):
         output = output.decode("utf-8")
         return output
 
-
-class RemoteConnector(Connector):
+# 测试用，尝试将Connector改造成多线程
+class RemoteConnector:
     """
     `RemoteConnector` is extended from `Connector`, which provide useful method for executing commands or shell scripts on remote SUT. 
     The remote SUT is can not be accessed locally, so that the operations rely on SSH / SFTP connection to remote SUT. 
@@ -102,10 +92,7 @@ class RemoteConnector(Connector):
         The remote temporary directory is named `.remote_test_dir`
 
         :param `test_dir`: path of the test directory for this run, which can be obtained by `Controller.get_test_dir_path()` 
-        :param `conn_info`: keyword arguments for remote SSH connection: 
-            `hostname`: the server to connect to
-            `username`: the username to authenticate as
-            `password`: used for password authentication
+        :param `conn_info`: keyword arguments for remote SSH connection
         :raises:
             `ConnectorError`: if encounter errors during the SSH / SFTP connection to remote SUT by `paramiko` module
         """
@@ -145,7 +132,7 @@ class RemoteConnector(Connector):
         
         # step 4. create a test directory on the remote SUT through SFTP session
         # the test directory is './.hperf/' by default. if it does not exist, hperf will create the directory.
-        default_remote_test_dir = "./.hperf"
+        default_remote_test_dir = "./.hperf/"
         # the initial working directory is "~/" 
         file_list = self.sftp.listdir(".")    # list all files (including directories) in current working directory
         if ".hperf" in file_list:    # directory ./.hperf/ exists on the remote SUT
@@ -169,9 +156,6 @@ class RemoteConnector(Connector):
 
         # step 5. record the remote test directory
         self.remote_test_dir = default_remote_test_dir
-
-        # step 6. set a Lock for concurrency control
-        self.locker = threading.Lock()
 
         self.logger.debug(f"remote test directory: {self.remote_test_dir}")
     
@@ -232,7 +216,7 @@ class RemoteConnector(Connector):
             self.logger.debug(f"executing script {remote_script_path} with an exit code of {ret_code}")
         self.logger.debug(f"finish script: {remote_script_path}")
 
-        # # step 3. pull files from remote SUT for following analyzing
+        # step 3. pull files from remote SUT for following analyzing
         # self.__pull_remote()    # may raise `ConnectorError`
         
         return ret_code
@@ -240,23 +224,18 @@ class RemoteConnector(Connector):
     def __generate_script(self, script: str, file_name: str) -> str:
         """
         Generate a profiling script on SUT. 
-        :param `script`: the string of shell script
-        :param `file_name`: file name of the shell script generated in remote test directory
+        :param `script`: a string of shell script
+        :param `file_name`: name of the shell script
         :return: path of the script on the SUT
         :raises:
             `ConnectorError`: if script fails to be generated on remote SUT
         """
         remote_script_path = os.path.join(self.remote_test_dir, file_name)
-        # -------- critical section --------
-        self.locker.acquire()
         try:
             with self.sftp.open(remote_script_path, "w") as f:    # may raise `IOError`
                 f.write(script)
         except IOError:
             raise ConnectorError(f"Fail to generate script {remote_script_path} on remote SUT")
-        finally:
-            self.locker.release()
-        # -------- critical section ends --------
         self.logger.debug(f"generate script in remote temporary directory: {remote_script_path}")
         return remote_script_path
 
@@ -266,8 +245,6 @@ class RemoteConnector(Connector):
         :raises:
             `ConnectorError`: if fail to pull raw performance data from remote SUT
         """
-        # -------- critical section --------
-        self.locker.acquire()
         try:
             for file in self.sftp.listdir(self.remote_test_dir):
                 remote_file_path = os.path.join(self.remote_test_dir, file)
@@ -276,9 +253,6 @@ class RemoteConnector(Connector):
                 self.logger.debug(f"get file from remote SUT to local test directory: {remote_file_path} -> {local_file_path}")
         except IOError:
             raise ConnectorError(f"Fail to pull raw performance data from remote SUT.")
-        finally:
-            self.locker.release()
-        # -------- critical section ends --------
 
     def close(self):
         """
@@ -289,3 +263,54 @@ class RemoteConnector(Connector):
             self.sftp.close()
         if self.client:
             self.client.close()
+
+
+if __name__ == "__main__":
+    logger: logging.Logger = logging.getLogger("hperf")
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
+    handler_stream = logging.StreamHandler()
+    handler_stream.setFormatter(formatter)
+    handler_stream.setLevel(logging.DEBUG)
+    logger.addHandler(handler_stream)
+
+    # 这里类比与Profiler，尝试在Profiler中创建多个线程并行地执行性能剖析脚本
+    # 测试RemoteConnector
+    # connector = RemoteConnector("./test/multi_test/", 
+    #                             hostname="ampere01.solelab.tech",
+    #                             username="tongyu",
+    #                             password="19990203jkl")
+    
+    # 再测试LocalConnector
+    connector = LocalConnector("./test/local_test/")
+    
+    # 准备两份脚本，一份是运行perf的，另一份是运行sar的，都相应地输出结果到测试文件夹中
+    perf_script = "#!/bin/bash\n"
+    perf_script += f'TMP_DIR={connector.test_dir}\n'
+    perf_script += 'perf_result="$TMP_DIR"/perf_result\n'
+    perf_script += 'perf_error="$TMP_DIR"/perf_error\n'
+    perf_script += f'3>"$perf_result" perf stat -e cycles,instructions -A -a -x, -I 1000 --log-fd 3 sleep 5 2>"$perf_error"\n'
+
+    sar_script = "#!/bin/bash\n"
+    sar_script += f'TMP_DIR={connector.test_dir}\n'
+    sar_script += 'sar_binary="$TMP_DIR"/sar_binary\n'
+    sar_script += 'sar_result="$TMP_DIR"/sar_result\n'
+    sar_script += 'sar -o "$sar_binary" -r 1 5\n'
+    sar_script += 'sadf -d "$sar_binary" | '
+    sar_script += "sed 's/;/,/g' "
+    sar_script += '> "$sar_result"\n'
+
+    # 上面两个脚本都能够独立地执行
+    # connector.run_script(perf_script, "perf.sh")
+    # connector.run_script(sar_script, "sar.sh")
+
+    # 下面尝试是否能够并行地执行
+    th1 = threading.Thread(target=connector.run_script, args=(perf_script, "perf.sh"))
+    th2 = threading.Thread(target=connector.run_script, args=(sar_script, "sar.sh"))
+
+    th1.start()
+    th2.start()
+    
+    th1.join()
+    th2.join()
+    
