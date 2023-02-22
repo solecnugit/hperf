@@ -3,8 +3,8 @@ import subprocess
 import os
 import socket
 import logging
-import re
 import paramiko
+import threading
 from hperf_exception import ConnectorError
 
 
@@ -170,6 +170,9 @@ class RemoteConnector(Connector):
         # step 5. record the remote test directory
         self.remote_test_dir = default_remote_test_dir
 
+        # step 6. set a Lock for concurrency control
+        self.locker = threading.Lock()
+
         self.logger.debug(f"remote test directory: {self.remote_test_dir}")
     
     def run_command(self, command_args: Sequence[str]) -> str:
@@ -244,11 +247,16 @@ class RemoteConnector(Connector):
             `ConnectorError`: if script fails to be generated on remote SUT
         """
         remote_script_path = os.path.join(self.remote_test_dir, file_name)
+        # -------- critical section --------
+        self.locker.acquire()
         try:
             with self.sftp.open(remote_script_path, "w") as f:    # may raise `IOError`
                 f.write(script)
         except IOError:
             raise ConnectorError(f"Fail to generate script {remote_script_path} on remote SUT")
+        finally:
+            self.locker.release()
+        # -------- critical section ends --------
         self.logger.debug(f"generate script in remote temporary directory: {remote_script_path}")
         return remote_script_path
 
@@ -258,6 +266,8 @@ class RemoteConnector(Connector):
         :raises:
             `ConnectorError`: if fail to pull raw performance data from remote SUT
         """
+        # -------- critical section --------
+        self.locker.acquire()
         try:
             for file in self.sftp.listdir(self.remote_test_dir):
                 remote_file_path = os.path.join(self.remote_test_dir, file)
@@ -266,6 +276,9 @@ class RemoteConnector(Connector):
                 self.logger.debug(f"get file from remote SUT to local test directory: {remote_file_path} -> {local_file_path}")
         except IOError:
             raise ConnectorError(f"Fail to pull raw performance data from remote SUT.")
+        finally:
+            self.locker.release()
+        # -------- critical section ends --------
 
     def close(self):
         """
