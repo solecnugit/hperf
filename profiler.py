@@ -109,7 +109,7 @@ class Profiler:
         script += f'TMP_DIR={perf_dir}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
-        script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x, -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
+        script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x "\t" -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
         self.logger.debug("profiling script by perf: \n" + script)
         return script
