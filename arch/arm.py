@@ -14,8 +14,8 @@ events = [
     { "id": 34, "perf_name": "r17", "name": "L2 CACHE MISSES" },
     { "id": 35, "perf_name": "r16", "name": "L2 CACHE ACCESSES" },
     # PMU - LLC (uncore)
-    # { "id": 100, "perf_name": "arm_cmn_0/hnf_cache_miss/", "name": "LL CACHE MISSES", "type": "SOCKET" },
-    # { "id": 101, "perf_name": "arm_cmn_0/hnf_slc_sf_cache_access/", "name": "LL CACHE ACCESSES", "type": "SOCKET" },
+    { "id": 100, "perf_name": "arm_cmn_0/hnf_cache_miss/", "name": "LL CACHE MISSES", "type": "SOCKET" },
+    { "id": 101, "perf_name": "arm_cmn_0/hnf_slc_sf_cache_access/", "name": "LL CACHE ACCESSES", "type": "SOCKET" },
     # PMU - Branch
     { "id": 40, "perf_name": "r22", "name": "BRANCH MISSES" }, 
     { "id": 41, "perf_name": "r21", "name": "BRANCHES" },
@@ -36,8 +36,8 @@ pinned_events = [20, 21]
 # left 5 counters for other events
 event_groups = [
     [30, 31, 32, 33],
-    # [34, 35, 40, 41, 60, 100, 101],
-    [34, 35, 40, 41, 60],
+    [34, 35, 40, 41, 60, 100, 101],
+    # [34, 35, 40, 41, 60],
     [50, 51, 52, 53, 61]
 ]
 
@@ -53,8 +53,8 @@ metrics = [
     { "metric": "L1D CACHE MISS RATE", "expression": "e32 / e33" },
     { "metric": "L2 CACHE MPKI", "expression": "(1000 * e34) / e21" },
     { "metric": "L2 CACHE MISS RATE", "expression": "e34 / e35" },
-    # { "metric": "L3 CACHE MPKI", "expression": "(1000 * e100) / e21" },
-    # { "metric": "L3 CACHE MISS RATE", "expression": "e100 / e101" },
+    { "metric": "L3 CACHE MPKI", "expression": "(1000 * e100) / e21" },
+    { "metric": "L3 CACHE MISS RATE", "expression": "e100 / e101" },
     # Branch
     { "metric": "BRANCH MPKI", "expression": "(1000 * e40) / e21" },
     { "metric": "BRANCH MISS RATE", "expression": "e40 / e41" },
