@@ -246,7 +246,10 @@ class Controller:
         Then output the report of performance metrics to the test directory. 
         """
         self.analyzer = Analyzer(self.get_test_dir_path(), self.configs, self.event_groups)
+        self.analyzer.analyze()
+        print(self.analyzer.get_timeseries(to_csv=True))
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
+        self.analyzer.get_timeseries_plot()
 
     def __save_log_file(self):
         """
