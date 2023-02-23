@@ -128,7 +128,18 @@ class Analyzer:
             
             perf_timeseries = pd.concat([perf_timeseries, pd.DataFrame(metric_results, index=[0])], ignore_index=True)
         
-        sar_timeseries = sar_raw_data[[r"%user", r"%nice", r"%system", r"%iowait", r"%steal", r"%idle"]]
+        sar_raw_data = sar_raw_data[["timestamp", "CPU", r"%user", r"%nice", r"%system", r"%iowait", r"%steal", r"%idle"]]
+        
+        sar_timeseries = sar_raw_data.groupby(["timestamp"]).agg(
+            USER=(r"%user", np.average),
+            NICE=(r"%nice", np.average),
+            SYSTEM=(r"%system", np.average),
+            IOWAIT=(r"%iowait", np.average),
+            STEAL=(r"%steal", np.average),
+            IDLE=(r"%idle", np.average)
+        ).reset_index()
+
+        sar_timeseries = sar_timeseries.drop("timestamp", axis=1)
         
         self.timeseries = pd.concat([perf_timeseries, sar_timeseries], axis=1)
 
@@ -145,7 +156,7 @@ class Analyzer:
         """
         """
         perf_metrics = [ item["metric"] for item in self.event_groups.metrics ]
-        sar_metrics = [r"%user", r"%nice", r"%system", r"%iowait", r"%steal", r"%idle"]
+        sar_metrics = ["USER", "NICE", "SYSTEM", "IOWAIT", "STEAL", "IDLE"]
         metrics = sar_metrics + perf_metrics
         axes = self.timeseries.plot(x="timestamp", 
                                     y=metrics,

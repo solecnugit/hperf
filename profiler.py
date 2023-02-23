@@ -129,12 +129,17 @@ class Profiler:
         else:
             raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
         
+        if self.configs["cpu_list"] == "all":
+            p_str = ""
+        else:
+            p_str = "-P " + ",".join([ str(item) for item in self.configs["cpu_list"]])
+        
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={sar_dir}\n'
         script += 'sar_binary="$TMP_DIR"/sar_binary\n'
         script += 'sar_result="$TMP_DIR"/sar_result\n'
-        script += 'sar -o "$sar_binary" -r 1 5\n'
-        script += 'sadf -d "$sar_binary" | '
+        script += f'sar -o "$sar_binary" {p_str} -r 1 5\n'
+        script += f'sadf -d "$sar_binary" {p_str} | '
         script += "sed 's/;/,/g' "
         script += '> "$sar_result"\n'
         script += 'rm -f "$sar_binary"\n'
