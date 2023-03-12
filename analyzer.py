@@ -37,7 +37,7 @@ class Analyzer:
                                     header=None, 
                                     names=["timestamp", "unit", "value", "metric"], 
                                     usecols=[0, 1, 2, 4])
-        sar_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_result"), 
+        sar_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_u"), 
                                    header=0)
         
         # rename 'unit' according to self.event_groups.events[..]['type']

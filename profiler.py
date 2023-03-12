@@ -136,12 +136,14 @@ class Profiler:
         
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={sar_dir}\n'
-        script += 'sar_binary="$TMP_DIR"/sar_binary\n'
-        script += 'sar_result="$TMP_DIR"/sar_result\n'
-        script += f'sar -o "$sar_binary" {p_str} -r 1 5\n'
-        script += f'sadf -d "$sar_binary" {p_str} | '
+        script += 'sar_binary="$TMP_DIR"/sar.log\n'
+        script += f'sar -A -o "$sar_binary" 1 {self.configs["time"]} > /dev/null 2>&1\n'
+        script += f'sadf -d "$sar_binary" -- {p_str} -u | '
         script += "sed 's/;/,/g' "
-        script += '> "$sar_result"\n'
+        script += '> "$TMP_DIR"/sar_u\n'
+        script += f'sadf -d "$sar_binary" -- -n DEV | '
+        script += "sed 's/;/,/g' "
+        script += '> "$TMP_DIR"/sar_n_dev\n'
         script += 'rm -f "$sar_binary"\n'
 
         self.logger.debug("profiling script by sar: \n" + script)
