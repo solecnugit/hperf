@@ -29,12 +29,12 @@ events = [
     { "id": 53, "perf_name": "r83d0", "name": "DTLB ACCESSES" }    # MEM_INST_RETIRED.ANY
 ]
 
-other_events = [0, 1, 2, 10]
+other_events = [0, 1, 2, 10, 100, 101]
 
 pinned_events = [20, 21, 22]
 
 event_groups = [
-    [30, 31, 32, 33, 100, 101],
+    [30, 31, 32, 33],
     [50, 51, 52, 53, 40, 41]
 ]
 
