@@ -117,17 +117,29 @@ class Profiler:
             raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
 
         if self.event_groups.isa == "x86_64":
+            # output format:
+            # processor | socket | core id in socket
+            # 0         | 0      | 0
+            # 1         | 0      | 1
+            # 2         | 0      | 2
+            # ...
             get_topo_cmd = r"awk -F: 'BEGIN{i=0;j=0;k=0}" \
             r"/processor/{cpu[i]=$2;i++}" \
             r"/physical id/{skt[j]=$2;j++}" \
             r"/core id/{phy[k]=$2;k++}" \
             r'''END{OFS="\t";for(key in cpu)print cpu[key],skt[key],phy[key]}' '''\
             r"/proc/cpuinfo > " + f"{output_dir}/cpu_topo"
-        # TODO: getting topo for arm is undone
         elif self.event_groups.isa == "aarch64":
+            # TODO: getting topo for arm is undone
+            # output format:
+            # processor | socket
+            # 0         | 0
+            # 1         | 0
+            # 2         | 0
+            # ...
             get_topo_cmd = r"awk -F: 'BEGIN{i=0}" \
             r"/processor/{cpu[i]=$2;i++}" \
-            r'''END{OFS="\t";for(key in cpu)print cpu[key]}' '''\
+            r'''END{OFS="\t";for(key in cpu)print cpu[key],0}' '''\
             r"/proc/cpuinfo > " + f"{output_dir}/cpu_topo"
         else:
             raise ProfilerError("Unsupported ISA.")
