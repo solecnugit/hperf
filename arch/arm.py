@@ -14,8 +14,8 @@ events = [
     { "id": 34, "perf_name": "r17", "name": "L2 CACHE MISSES" },
     { "id": 35, "perf_name": "r16", "name": "L2 CACHE ACCESSES" },
     # PMU - LLC (uncore)
-    { "id": 100, "perf_name": "arm_cmn_0/hnf_cache_miss/", "name": "LL CACHE MISSES", "type": "SOCKET" },
-    { "id": 101, "perf_name": "arm_cmn_0/hnf_slc_sf_cache_access/", "name": "LL CACHE ACCESSES", "type": "SOCKET" },
+    { "id": 100, "perf_name": "arm_cmn_0/hnf_cache_miss/", "name": "LL CACHE MISSES", "type": "SYSTEM" },
+    { "id": 101, "perf_name": "arm_cmn_0/hnf_slc_sf_cache_access/", "name": "LL CACHE ACCESSES", "type": "SYSTEM" },
     # PMU - Branch
     { "id": 40, "perf_name": "r22", "name": "BRANCH MISSES" }, 
     { "id": 41, "perf_name": "r21", "name": "BRANCHES" },
@@ -29,15 +29,14 @@ events = [
     { "id": 61, "perf_name": "r24", "name": "BACKEND STALLS" }
 ]
 
-other_events = [0, 1, 2]
+other_events = [0, 1, 2, 100, 101]
 
 pinned_events = [20, 21]
 
 # left 5 counters for other events
 event_groups = [
     [30, 31, 32, 33],
-    [34, 35, 40, 41, 60, 100, 101],
-    # [34, 35, 40, 41, 60],
+    [34, 35, 40, 41, 60],
     [50, 51, 52, 53, 61]
 ]
 
