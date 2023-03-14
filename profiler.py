@@ -30,6 +30,10 @@ class Profiler:
             if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT
             `ProfilerError`: if the returned code of executing script does not equal to 0 
         """
+        self.logger.info("get static information of SUT")
+        self.get_cpu_info()
+        self.get_cpu_topo()
+        
         perf_script = self.__get_perf_script()
         sar_script = self.__get_sar_script()
 
@@ -89,6 +93,46 @@ class Profiler:
                 sanity_check_flag = False
 
         return sanity_check_flag
+    
+    def get_cpu_info(self):
+        """
+        """
+        if isinstance(self.connector, LocalConnector):
+            output_dir = self.connector.test_dir
+        elif isinstance(self.connector, RemoteConnector):
+            output_dir = self.connector.remote_test_dir
+        else:
+            raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
+        
+        self.connector.run_command("lscpu > " + f"{output_dir}/cpu_info")
+    
+    def get_cpu_topo(self):
+        """
+        """
+        if isinstance(self.connector, LocalConnector):
+            output_dir = self.connector.test_dir
+        elif isinstance(self.connector, RemoteConnector):
+            output_dir = self.connector.remote_test_dir
+        else:
+            raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
+
+        if self.event_groups.isa == "x86_64":
+            get_topo_cmd = r"awk -F: 'BEGIN{i=0;j=0;k=0}" \
+            r"/processor/{cpu[i]=$2;i++}" \
+            r"/physical id/{skt[j]=$2;j++}" \
+            r"/core id/{phy[k]=$2;k++}" \
+            r'''END{OFS="\t";for(key in cpu)print cpu[key],skt[key],phy[key]}' '''\
+            r"/proc/cpuinfo > " + f"{output_dir}/cpu_topo"
+        # TODO: getting topo for arm is undone
+        elif self.event_groups.isa == "aarch64":
+            get_topo_cmd = r"awk -F: 'BEGIN{i=0}" \
+            r"/processor/{cpu[i]=$2;i++}" \
+            r'''END{OFS="\t";for(key in cpu)print cpu[key]}' '''\
+            r"/proc/cpuinfo > " + f"{output_dir}/cpu_topo"
+        else:
+            raise ProfilerError("Unsupported ISA.")
+        
+        self.connector.run_command(get_topo_cmd)
     
     def __get_perf_script(self) -> str:
         """
