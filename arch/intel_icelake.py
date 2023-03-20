@@ -15,8 +15,11 @@ events = [
     { "id": 32, "perf_name": "r10d1", "name": "L2 CACHE MISSES" },    # MEM_LOAD_RETIRED.L2_MISS
     { "id": 33, "perf_name": "r02d1", "name": "L2 CACHE HITS" },    # MEM_LOAD_RETIRED.L2_HIT
     # PMU - LLC (uncore)
-    { "id": 100, "perf_name": "uncore_cha_0/event=0x34,umask=0x1fe001/", "name": "LL CACHE MISSES", "type": "SOCKET" },    # LLC_LOOKUP.MISS_ALL
-    { "id": 101, "perf_name": "uncore_cha_0/event=0x34,umask=0x1fffff/", "name": "LL CACHE ACCESSES", "type": "SOCKET" },    # LLC_LOOKUP
+    { "id": 100, "perf_name": "cha/event=0x34,umask=0x1fe001/", "name": "LL CACHE MISSES", "type": "SOCKET" },    # LLC_LOOKUP.MISS_ALL
+    { "id": 101, "perf_name": "cha/event=0x34,umask=0x1fffff/", "name": "LL CACHE ACCESSES", "type": "SOCKET" },    # LLC_LOOKUP
+    # PMU - Memory (uncore)
+    { "id": 110, "perf_name": "imc/event=0x04,umask=0x0f/", "name": "MEM ACCESSES RD", "type": "SOCKET" },    # CAS_COUNT.RD
+    { "id": 111, "perf_name": "imc/event=0x04,umask=0x30/", "name": "MEM ACCESSES WR", "type": "SOCKET" },    # ​CAS_COUNT.WR
     # PMU - Branch 
     { "id": 40, "perf_name": "r00c5", "name": "BRANCH MISSES" },    # BR_MISP_RETIRED.ALL_BRANCHES
     { "id": 41, "perf_name": "r00c4", "name": "BRANCHES" },    # BR_INST_RETIRED.ALL_BRANCHES
@@ -29,7 +32,7 @@ events = [
     { "id": 53, "perf_name": "r83d0", "name": "DTLB ACCESSES" }    # MEM_INST_RETIRED.ANY
 ]
 
-other_events = [0, 1, 2, 10, 100, 101]
+other_events = [0, 1, 2, 10, 100, 101, 110, 111]
 
 pinned_events = [20, 21, 22]
 
@@ -51,6 +54,10 @@ metrics = [
     # LLC
     { "metric": "LL CACHE MPKI", "expression": "(1000 * e100) / e21" },
     { "metric": "LL CACHE MISS RATE", "expression": "e100 / e101" },
+    # Memory
+    { "metric": "MEM BANDWITH RD", "expression": "(e110 * 64) / (e1 / 1000000000)" },
+    { "metric": "MEM BANDWITH WR", "expression": "(e111 * 64) / (e1 / 1000000000)" },
+    { "metric": "MEM BANDWITH", "expression": "((e110 + e111) * 64) / (e1 / 1000000000)"},
     # Branch
     { "metric": "BRANCH MPKI", "expression": "(1000 * e40) / e21" },
     { "metric": "BRANCH MISS RATE", "expression": "e40 / e41" },
