@@ -165,6 +165,7 @@ class Profiler:
         script += f'TMP_DIR={perf_dir}\n'
         script += 'perf_result="$TMP_DIR"/perf_result\n'
         script += 'perf_error="$TMP_DIR"/perf_error\n'
+        script += 'date +%Y-%m-%d" "%H:%M:%S.%N | cut -b 1-23 > "$TMP_DIR"/perf_start_timestamp\n'
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x "\t" -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
         self.logger.debug("profiling script by perf: \n" + script)
@@ -193,6 +194,7 @@ class Profiler:
         script = "#!/bin/bash\n"
         script += f'TMP_DIR={sar_dir}\n'
         script += 'sar_binary="$TMP_DIR"/sar.log\n'
+        script += 'date +%Y-%m-%d" "%H:%M:%S.%N | cut -b 1-23 > "$TMP_DIR"/sar_start_timestamp\n'
         script += f'sar -A -o "$sar_binary" 1 {self.configs["time"]} > /dev/null 2>&1\n'
         script += f'sadf -d "$sar_binary" -- {p_str} -u | '
         script += "sed 's/;/,/g' "
