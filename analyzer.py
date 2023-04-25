@@ -96,17 +96,15 @@ class Analyzer:
             ).reset_index()
         else:
             unit_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
-            # TODO: besides CPUs, there are also some system-wide and socket-wide events need to be added in 'unit_list'
+            # besides CPUs, there are also some system-wide and socket-wide events need to be added in 'unit_list'
             # e.g. CPU 0, 2, 4, 6 are specified, these 4 CPUs are belong to SOCKET0, so that SOCKET0 and SYSTEM should be added in 'unit_list'.
             if system_event_flag:
                 unit_list.append("SYSTEM")
-            # -------------- faulty --------------
             if socket_event_flag:
                 for i in self.configs["cpu_list"]:
                     socket = f'SOCKET{self.cpu_topo.loc[self.cpu_topo.unit == i]["socket"].values[0]}'
                     if socket not in unit_list:
                         unit_list.append(socket)
-            # -------------- faulty --------------
             self.logger.debug(f"Unit list: {unit_list}")
 
             scoped_raw_data = perf_raw_data[perf_raw_data["unit"].isin(unit_list)].groupby(["timestamp", "metric"]).agg(
