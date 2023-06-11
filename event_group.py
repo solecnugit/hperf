@@ -27,7 +27,24 @@ class EventGroup:
         self.other_events: list = getattr(arch_module, "other_events")
         self.pinned_events: list = getattr(arch_module, "pinned_events")
         self.event_groups: list = getattr(arch_module, "event_groups")
-        self.metrics: list = getattr(arch_module, "metrics")    
+        self.metrics: list = getattr(arch_module, "metrics")
+
+    def __init__(self, isa: str, arch: str) -> None: 
+        """
+        without Connector
+        """
+        self.logger = logging.getLogger("hperf")
+
+        self.isa = isa
+        self.arch = arch
+
+        # dynamic import event configurations based on the architecture of the SUT
+        arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
+        self.events: list = getattr(arch_module, "events")
+        self.other_events: list = getattr(arch_module, "other_events")
+        self.pinned_events: list = getattr(arch_module, "pinned_events")
+        self.event_groups: list = getattr(arch_module, "event_groups")
+        self.metrics: list = getattr(arch_module, "metrics")
 
     def __get_isa(self) -> str:
         """
