@@ -130,9 +130,9 @@ class Analyzer:
         perf_timeseries = pd.DataFrame()    # for final results
         # timestamp | <event> | ... | <event> | <metric> | ... | <metric>
 
-        timestampes = scoped_raw_data.groupby(["timestamp"]).groups.keys()
+        timestamps = scoped_raw_data.groupby(["timestamp"]).groups.keys()    # get all timestamps
 
-        for t in timestampes:
+        for t in timestamps:
             metric_results = {}
             metric_results["timestamp"] = t    # col. 0
             
