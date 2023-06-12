@@ -6,7 +6,7 @@ class EventGroup:
     'EventGroup' is responsible for detecting the architecture of the SUT 
     and generating the string of event groups, which can be accepted by '-e' options of 'perf'.
     """
-    def __init__(self, connector: Connector) -> None:
+    def __init__(self, connector: Connector = None) -> None:
         """
         Constructor of 'EventGroup'.
         It will firstly determine the architecture of the SUT through 'Connector', 
@@ -15,19 +15,42 @@ class EventGroup:
         """
         self.logger = logging.getLogger("hperf")
         
-        self.connector = connector
+        if connector:
+            self.connector = connector
+            
+            self.isa = self.__get_isa()
+            
+            self.arch = self.__get_architecture()
 
-        self.isa = self.__get_isa()
+            # dynamic import event configurations based on the architecture of the SUT
+            arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
+            self.events: list = getattr(arch_module, "events")
+            self.other_events: list = getattr(arch_module, "other_events")
+            self.pinned_events: list = getattr(arch_module, "pinned_events")
+            self.event_groups: list = getattr(arch_module, "event_groups")
+            self.metrics: list = getattr(arch_module, "metrics")
 
-        self.arch = self.__get_architecture()
+    @classmethod
+    def get_event_group(cls, isa: str, arch: str):
+        """
+        Constructor of 'EventGroup', without Connector.
+        For unit test.
+        """
+        my_event_group = cls()
+        my_event_group.logger = logging.getLogger("hperf")
+
+        my_event_group.isa = isa
+        my_event_group.arch = arch
 
         # dynamic import event configurations based on the architecture of the SUT
-        arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
-        self.events: list = getattr(arch_module, "events")
-        self.other_events: list = getattr(arch_module, "other_events")
-        self.pinned_events: list = getattr(arch_module, "pinned_events")
-        self.event_groups: list = getattr(arch_module, "event_groups")
-        self.metrics: list = getattr(arch_module, "metrics")    
+        arch_module = __import__(f"arch.{my_event_group.arch}", fromlist=[0])
+        my_event_group.events: list = getattr(arch_module, "events")
+        my_event_group.other_events: list = getattr(arch_module, "other_events")
+        my_event_group.pinned_events: list = getattr(arch_module, "pinned_events")
+        my_event_group.event_groups: list = getattr(arch_module, "event_groups")
+        my_event_group.metrics: list = getattr(arch_module, "metrics")
+
+        return my_event_group
 
     def __get_isa(self) -> str:
         """
