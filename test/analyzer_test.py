@@ -3,7 +3,7 @@ import sys, importlib, os
 if __name__ == "__main__":
     # modify `tmp_dir` and `test_id` to the test directory in ./test/
     tmp_dir = "/home/tongyu/project/hperf/test"
-    test_id = "20230612_test001"
+    test_id = "test_dir"
     
     test_dir_path = os.path.join(tmp_dir, test_id)
 
