@@ -1,9 +1,9 @@
 import sys, importlib, os
 
 if __name__ == "__main__":
-    # modify `tmp_dir` and `test_id` to 
+    # modify `tmp_dir` and `test_id` to the test directory in ./test/
     tmp_dir = "/home/tongyu/project/hperf/test"
-    test_id = "20230612_test001"
+    test_id = "test_dir"
     
     test_dir_path = os.path.join(tmp_dir, test_id)
 
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     sys.path.append("/home/tongyu/project/hperf")
     event_group_module = importlib.import_module("event_group")
-    analyzer_mmodule = importlib.import_module("analyzer")
+    analyzer_module = importlib.import_module("analyzer")
     
     EventGroup = getattr(event_group_module, "EventGroup")
 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     print(event_groups.get_event_groups_str())
 
-    Analyzer = getattr(analyzer_mmodule, "Analyzer")
+    Analyzer = getattr(analyzer_module, "Analyzer")
 
     analyzer = Analyzer(test_dir_path, configs, event_groups)
 
