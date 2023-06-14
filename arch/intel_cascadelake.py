@@ -96,3 +96,5 @@ metrics = [
         "expression": "e34 / e33"
     }
 ]
+
+available_GP = 4

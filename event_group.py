@@ -30,6 +30,10 @@ class EventGroup:
             self.event_groups: list = getattr(arch_module, "event_groups")
             self.metrics: list = getattr(arch_module, "metrics")
 
+            self.available_GP: int = getattr(arch_module, "available_GP")
+
+            self.__optimize_event_groups()
+
     @classmethod
     def get_event_group(cls, isa: str, arch: str):
         """
@@ -50,8 +54,61 @@ class EventGroup:
         my_event_group.event_groups: list = getattr(arch_module, "event_groups")
         my_event_group.metrics: list = getattr(arch_module, "metrics")
 
+        my_event_group.available_GP: int = getattr(arch_module, "available_GP")
+
         return my_event_group
 
+    def __optimize_event_groups(self):
+        """
+        Adaptive Grouping
+        """
+        filtered_event_groups = []
+
+        not_multiplexing_events = self.other_events + self.pinned_events
+
+        for event_group in self.event_groups:
+            filtered_event_group = set()
+            for event in event_group: 
+                if event not in not_multiplexing_events:
+                    filtered_event_group.add(event)
+            if len(filtered_event_group) != 0:
+                filtered_event_groups.append(filtered_event_group)
+        
+        while True:
+            if len(filtered_event_groups) <= 1:
+                break
+
+            # Find G_i
+            g_size = 1000
+            for i, g in enumerate(filtered_event_groups):
+                if len(g) < g_size:
+                    g_size = len(g)
+                    g_i_index = i
+                    g_i = g
+            del filtered_event_groups[g_i_index]
+
+            # Find G_j
+            g_size = 1000
+            for i, g in enumerate(filtered_event_groups):
+                g_merged = g.union(g_i)
+                if len(g_merged) < g_size:
+                    g_size = len(g_merged)
+                    g_j_index = i
+                    g_j = g
+            del filtered_event_groups[g_j_index]
+
+            # Merge G_i and G_j
+            g_merged = g_j.union(g_i)
+            
+            if len(g_merged) <= self.available_GP:
+                filtered_event_groups.insert(0, g_merged)
+            else:
+                filtered_event_groups.insert(g_j_index, g_j)
+                filtered_event_groups.insert(g_i_index, g_i)
+                break
+        
+        self.event_groups = filtered_event_groups
+    
     def __get_isa(self) -> str:
         """
         Determine the Instruction Set Architecture (ISA) of the SUT by analyzing the output of 'lscpu' command.
