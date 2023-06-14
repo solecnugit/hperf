@@ -10,3 +10,4 @@ dependencies:
   - numpy
   - paramiko
   - cryptography>=3.4.0,<35.0.0
+  - matplotlib
