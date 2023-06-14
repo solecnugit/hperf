@@ -50,8 +50,6 @@ class Analyzer:
                                     header=None, 
                                     names=["timestamp", "unit", "value", "metric"], 
                                     usecols=[0, 1, 2, 4])
-        sar_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_u"), 
-                                   header=0)
         
         # rename 'unit' according to self.event_groups.events[..]['type']
         # e.g. 'duration_time' is a system-wide event, where in each timestamp there is only a value (attribute to CPU0)
@@ -148,20 +146,7 @@ class Analyzer:
             
             perf_timeseries = pd.concat([perf_timeseries, pd.DataFrame(metric_results, index=[0])], ignore_index=True)
         
-        sar_raw_data = sar_raw_data[["timestamp", "CPU", r"%user", r"%nice", r"%system", r"%iowait", r"%steal", r"%idle"]]
-        
-        sar_timeseries = sar_raw_data.groupby(["timestamp"]).agg(
-            USER=(r"%user", np.average),
-            NICE=(r"%nice", np.average),
-            SYSTEM=(r"%system", np.average),
-            IOWAIT=(r"%iowait", np.average),
-            STEAL=(r"%steal", np.average),
-            IDLE=(r"%idle", np.average)
-        ).reset_index()
-
-        sar_timeseries = sar_timeseries.drop("timestamp", axis=1)
-        
-        self.timeseries = pd.concat([perf_timeseries, sar_timeseries], axis=1)
+        self.timeseries = pd.concat([perf_timeseries], axis=1)
 
     def get_timeseries(self, to_csv: bool = False) -> pd.DataFrame:
         """
@@ -176,8 +161,7 @@ class Analyzer:
         """
         """
         perf_metrics = [ item["metric"] for item in self.event_groups.metrics ]
-        sar_metrics = ["USER", "NICE", "SYSTEM", "IOWAIT", "STEAL", "IDLE"]
-        metrics = sar_metrics + perf_metrics
+        metrics = perf_metrics
         axes = self.timeseries.plot(x="timestamp", 
                                     y=metrics,
                                     subplots=True,

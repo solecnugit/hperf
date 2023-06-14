@@ -64,24 +64,6 @@ class OptParser:
                                  default="all",
                                  help="specify the scope of performance data aggregation by passing a list of cpu ids.")
 
-        #   [--time SECOND]
-        # TODO: this option is currently used for profiling by sar, because sar needs to specify the time of profiling.
-        # the profiling time of sar should equal to the time of workload running, 
-        # however, we are unable to know the time of workload running in advance.
-        # so this option is a workaround. users should set this value to the estimated workload running time.
-        self.parser.add_argument("-t", "--time",
-                                 metavar="SECOND",
-                                 type=int,
-                                 default=10,
-                                 help="time of profiling")
-        
-        # TODO: add more options in future
-        #   [--config FILE_PATH]
-        # self.parser.add_argument("-f", "--config-file",
-        #                          metavar="FILE_PATH",
-        #                          type=str,
-        #                          help="specify a configuration file with JSON format.")
-
     def parse_args(self, argv: Sequence[str]) -> dict:
         """
         Parse and validate the options and arguments passed from command line and return an instance of `Connector`. 
@@ -141,10 +123,6 @@ class OptParser:
         # step 4. temporary directory
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
-
-        # step 5. profiling time
-        if args.time:
-            configs["time"] = args.time
 
         self.logger.debug(f"parsed configurations: {configs}")
 
