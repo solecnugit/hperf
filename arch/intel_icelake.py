@@ -66,3 +66,5 @@ metrics = [
     { "metric": "DTLB MPKI", "expression": "(1000 * (e51 + e52)) / e21" },
     { "metric": "DTLB WALK RATE", "expression": "(e51 + e52) / e53" },
 ]
+
+available_GP = 4

@@ -66,3 +66,5 @@ metrics = [
     { "metric": "FRONTEND STALL RATE", "expression": "e60 / e20" },
     { "metric": "BACKEND STALL RATE", "expression": "e61 / e20" }
 ]
+
+available_GP = 6
