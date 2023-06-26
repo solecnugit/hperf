@@ -26,7 +26,21 @@ events = [
     { "id": 53, "perf_name": "r25", "name": "DTLB ACCESSES" },
     # PMU - Other
     { "id": 60, "perf_name": "r23", "name": "FRONTEND STALLS" }, 
-    { "id": 61, "perf_name": "r24", "name": "BACKEND STALLS" }
+    { "id": 61, "perf_name": "r24", "name": "BACKEND STALLS" },
+    # PMU - instruction mix
+    { "id": 70, "perf_name": "r70", "name": "LD SPEC" }, 
+    { "id": 71, "perf_name": "r71", "name": "ST SPEC" }, 
+    { "id": 72, "perf_name": "r74", "name": "ASE SPEC" }, 
+    { "id": 73, "perf_name": "r75", "name": "VFP SPEC" }, 
+    { "id": 74, "perf_name": "r73", "name": "DP IMMED SPEC" }, 
+    { "id": 75, "perf_name": "r78", "name": "BR IMMED SPEC" }, 
+    { "id": 76, "perf_name": "r7A", "name": "BR INDIRECT SPEC" }, 
+    { "id": 77, "perf_name": "r79", "name": "BR RETURN SPEC" },
+    { "id": 78, "perf_name": "r1B", "name": "INSTRUCTIONS SPEC" },
+    # PMU - memory access
+    { "id": 80, "perf_name": "r31", "name": "REMOTE ACCESS" },
+    { "id": 81, "perf_name": "r66", "name": "MEM ACCESS RD" },
+    { "id": 82, "perf_name": "r67", "name": "MEM ACCESS WR" }
 ]
 
 other_events = [0, 1, 2, 100, 101]
@@ -37,7 +51,10 @@ pinned_events = [20, 21]
 event_groups = [
     [30, 31, 32, 33],
     [34, 35, 40, 41, 60],
-    [50, 51, 52, 53, 61]
+    [50, 51, 52, 53, 61], 
+    [70, 71, 72, 73, 74],
+    [75, 76, 77, 78],
+    [80, 81, 82]
 ]
 
 metrics = [
@@ -64,7 +81,16 @@ metrics = [
     { "metric": "DTLB WALK RATE", "expression": "e52 / e53" },
     # Stall
     { "metric": "FRONTEND STALL RATE", "expression": "e60 / e20" },
-    { "metric": "BACKEND STALL RATE", "expression": "e61 / e20" }
+    { "metric": "BACKEND STALL RATE", "expression": "e61 / e20" },
+    # Instruction Mix
+    { "metric": "LD PERCENTAGE", "expression": "e70 / e78" },
+    { "metric": "ST PERCENTAGE", "expression": "e71 / e78" },
+    { "metric": "ASE PERCENTAGE", "expression": "e72 / e78" },
+    { "metric": "VFP PERCENTAGE", "expression": "e73 / e78" },
+    { "metric": "DP PERCENTAGE", "expression": "e74 / e78" },
+    { "metric": "BR IMMED PERCENTAGE", "expression": "e75 / e78" },
+    { "metric": "BR INDIRECT", "expression": "e76 / e78" },
+    { "metric": "BR RETURN", "expression": "e77 / e78" }
 ]
 
 available_GP = 6
