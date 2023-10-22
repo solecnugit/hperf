@@ -15,6 +15,8 @@ Tong-yu Liu, Jianmei Guo, Bo Huang
 
 ACM Trans. Arch. Code Optim. (Just Accepted, Sep. 2023)
 
+https://dl.acm.org/doi/10.1145/3629525
+
 ## Background
 
 hperf is developed based on Linux perf, which is implemented by building a layer of encapsulation on top of perf. Our purposes are: 
