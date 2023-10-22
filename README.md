@@ -13,7 +13,7 @@ Efficient Cross-platform Multiplexing of Hardware Performance Counters via Adapt
 
 Tong-yu Liu, Jianmei Guo, Bo Huang
 
-ACM Trans. Arch. Code Optim. (Just Accepted, Sep. 2023)
+ACM Trans. Arch. Code Optim. 
 
 https://dl.acm.org/doi/10.1145/3629525
 
