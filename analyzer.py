@@ -89,9 +89,9 @@ class Analyzer:
         # in every timestamp, aggregate performance data for selected cpus (aggregate 'unit')
         # timestamp | unit | value | metric -> timestamp | value=sum(value) | metric
         if self.configs["cpu_list"] == 'all':
-            scoped_raw_data = perf_raw_data.groupby(["timestamp", "metric"]).agg(
-                value=("value", np.sum)
-            ).reset_index()
+            scoped_raw_data = perf_raw_data.groupby(["timestamp", "metric"]).agg({
+                "value": "sum"
+                }).reset_index()
         else:
             unit_list = [ f"CPU{i}" for i in self.configs["cpu_list"] ]
             # besides CPUs, there are also some system-wide and socket-wide events need to be added in 'unit_list'
