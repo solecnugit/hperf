@@ -26,8 +26,10 @@ class Analyzer:
 
         self.cpu_topo: pd.DataFrame = None    # for cpu topo (mapping of cpu id and socket id)
         
-        self.timeseries: pd.DataFrame = None    # for timeseries results
-        self.aggregated_metrics: pd.DataFrame = None    # for aggregated results
+        self.hw_timeseries: pd.DataFrame = None    # for perf timeseries result
+        self.sw_timeseries: pd.DataFrame = None    # for sar timeseries result
+        
+        self.aggregated_metrics: pd.DataFrame = None    # for aggregated results, hw event counts, metrics, sw avg. util.
 
     def __analyze_cpu_topo(self):
         """
@@ -50,7 +52,12 @@ class Analyzer:
                                     header=None, 
                                     names=["timestamp", "unit", "value", "metric"], 
                                     usecols=[0, 1, 2, 4])
+        sar_u_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_u"), header=0)    # CPU util. ["%user", "%system"]
+        sar_r_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_r"), header=0)    # mem. util. ["%memused"]
+        # sar_n_dev_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_n_dev"), header=0)    # network util ["%ifutil"]
+        # sar_d_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_d"), header=0)    # storage util. ["%util"]
         
+        # ------------ for perf data --------------
         # rename 'unit' according to self.event_groups.events[..]['type']
         # e.g. 'duration_time' is a system-wide event, where in each timestamp there is only a value (attribute to CPU0)
         # timestamp | unit | value | metric         -> timestamp | unit   | value | metric
@@ -146,31 +153,58 @@ class Analyzer:
             
             perf_timeseries = pd.concat([perf_timeseries, pd.DataFrame(metric_results, index=[0])], ignore_index=True)
         
-        self.timeseries = pd.concat([perf_timeseries], axis=1)
+        self.hw_timeseries = perf_timeseries
+        
+        # ------------ for sar data --------------
+        sar_u_timeseries = sar_u_raw_data[["timestamp", r"%user", r"%system"]].groupby(["timestamp"]).agg(
+            USER=(r"%user", np.average),
+            SYSTEM=(r"%system", np.average)
+        ).reset_index()
+        sar_r_timeseries = sar_r_raw_data[["timestamp", r"%memused"]].groupby(["timestamp"]).agg(
+            MEMUSED=(r"%memused", np.average)
+        ).reset_index().drop("timestamp", axis=1)
+        
+        self.sw_timeseries = pd.concat([sar_u_timeseries, sar_r_timeseries], axis=1)        
 
     def get_timeseries(self, to_csv: bool = False) -> pd.DataFrame:
         """
         """
         if to_csv:
-            timeseries_path = os.path.join(self.test_dir, "timeseries.csv")
-            self.timeseries.to_csv(timeseries_path, header=True)
-            self.logger.info(f"save timeseries DataFrame to CSV file: {timeseries_path}")
-        return self.timeseries
+            hw_timeseries_path = os.path.join(self.test_dir, "hw_timeseries.csv")
+            self.hw_timeseries.to_csv(hw_timeseries_path, header=True)
+            self.logger.info(f"save timeseries DataFrame to CSV file: {hw_timeseries_path}")
+            
+            sw_timeseries_path = os.path.join(self.test_dir, "sw_timeseries.csv")
+            self.sw_timeseries.to_csv(sw_timeseries_path, header=True)
+            self.logger.info(f"save timeseries DataFrame to CSV file: {sw_timeseries_path}")
+        
+        return self.hw_timeseries, self.sw_timeseries
 
     def get_timeseries_plot(self):
         """
         """
         perf_metrics = [ item["metric"] for item in self.event_groups.metrics ]
-        metrics = perf_metrics
-        axes = self.timeseries.plot(x="timestamp", 
-                                    y=metrics,
-                                    subplots=True,
-                                    figsize=(10, 2 * len(metrics)))
+        sar_metrics = ["USER", "SYSTEM", "MEMUSED"]
+        
+        axes = self.hw_timeseries.plot(x="timestamp", 
+                                       y=perf_metrics,
+                                       subplots=True,
+                                       figsize=(10, 2 * len(perf_metrics)))
         fig = axes[0].get_figure()
         
-        timeseries_plot_path = os.path.join(self.test_dir, "timeseries.png")
-        fig.savefig(timeseries_plot_path)
-        self.logger.info(f"timeseries figure saved in: {timeseries_plot_path}")
+        hw_timeseries_plot_path = os.path.join(self.test_dir, "hw_timeseries.png")
+        fig.savefig(hw_timeseries_plot_path)
+        self.logger.info(f"timeseries figure saved in: {hw_timeseries_plot_path}")
+        
+        axes = self.sw_timeseries.plot(x="timestamp", 
+                                       y=sar_metrics,
+                                       subplots=True,
+                                       figsize=(10, 2 * len(sar_metrics)))
+        fig = axes[0].get_figure()
+        
+        sw_timeseries_plot_path = os.path.join(self.test_dir, "sw_timeseries.png")
+        fig.savefig(sw_timeseries_plot_path)
+        self.logger.info(f"timeseries figure saved in: {sw_timeseries_plot_path}")
 
     def get_aggregated_metrics(self, to_csv: bool = False) -> pd.DataFrame:
         """
@@ -179,10 +213,10 @@ class Analyzer:
         # for events, get the sum of values in differenet timestamps; for metrics, get the average of values in different timestamps. 
         metric_results = {}
         for item in self.event_groups.events:
-            sum = self.timeseries[item["name"]].sum()
+            sum = self.hw_timeseries[item["name"]].sum()
             metric_results[item["name"]] = sum
         for item in self.event_groups.metrics:
-            avg = self.timeseries[item["metric"]].mean()
+            avg = self.hw_timeseries[item["metric"]].mean()
             metric_results[item["metric"]] = avg
 
         self.aggregated_metrics = pd.DataFrame(metric_results, index=[0])

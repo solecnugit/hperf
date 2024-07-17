@@ -35,16 +35,23 @@ class Profiler:
         self.get_cpu_topo()
         
         perf_script = self.__get_perf_script()
+        sar_script = self.__get_sar_script()
 
         self.logger.info("start profiling")
         
         abnormal_flag = False
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        
+        with ThreadPoolExecutor(max_workers=2) as executor:
             perf_task = executor.submit(self.connector.run_script, perf_script, "perf.sh")
+            sar_task = executor.submit(self.connector.run_script, sar_script, "sar.sh")
+            
+            tasks = [perf_task, sar_task]
+            task_names = ["perf", "sar"]
 
-            for future in as_completed([perf_task]):
+            for task_id, future in enumerate(as_completed(tasks)):
                 ret_code = future.result()
                 if ret_code != 0:
+                    self.logger.error(f"Execution error: {task_names[task_id]}")
                     abnormal_flag = True
         
         if isinstance(self.connector, RemoteConnector):
@@ -167,4 +174,46 @@ class Profiler:
         script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x "\t" -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
 
         self.logger.debug("profiling script by perf: \n" + script)
+        return script
+    
+    def __get_sar_script(self) -> str:
+        """
+        Based on the parsed configuration, generate the string of shell script for profiling by sar.
+        :return: a string of shell script for profiling
+        """
+        # for local SUT, output raw performance data to the test directory directly will be fine. 
+        # however, for remote SUT, raw performance data should be output to the remote temporary which can be accessd on remote SUT, 
+        # then pull the data to the local test directory. 
+        if isinstance(self.connector, LocalConnector):
+            sar_dir = self.connector.test_dir
+        elif isinstance(self.connector, RemoteConnector):
+            sar_dir = self.connector.remote_test_dir
+        else:
+            raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
+        
+        if self.configs["cpu_list"] == "all":
+            p_str = ""
+        else:
+            p_str = "-P " + ",".join([ str(item) for item in self.configs["cpu_list"]])
+            
+        script = ('#!/bin/bash\n'
+                  f'TMP_DIR={sar_dir}\n'
+                  'sar_binary="$TMP_DIR"/sar.log\n'
+                  f'sar -A -o "$sar_binary" 1 {self.configs["time"]} > /dev/null 2>&1\n'
+                  f'sadf -d "$sar_binary" -- {p_str} -u | '    # CPU util. ["%user", "%system"]
+                  "sed 's/;/,/g' "
+                  '> "$TMP_DIR"/sar_u\n'
+                  f'sadf -d "$sar_binary" -- -r | '    # mem. util. ["%memused"]
+                  "sed 's/;/,/g' "
+                  '> "$TMP_DIR"/sar_r\n'
+                  f'sadf -d "$sar_binary" -- -n DEV | '    # network util ["%ifutil"]
+                  "sed 's/;/,/g' "
+                  '> "$TMP_DIR"/sar_n_dev\n'
+                  f'sadf -d "$sar_binary" -- -d | '    # storage util. ["%util"]
+                  "sed 's/;/,/g' "
+                  '> "$TMP_DIR"/sar_d\n'
+                  'rm -f "$sar_binary"\n'
+                  )
+
+        self.logger.debug("profiling script by sar: \n" + script)
         return script
