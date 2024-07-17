@@ -247,7 +247,10 @@ class Controller:
         """
         self.analyzer = Analyzer(self.get_test_dir_path(), self.configs, self.event_groups)
         self.analyzer.analyze()
-        print(self.analyzer.get_timeseries(to_csv=True))
+        
+        hw_timeseries, sw_timeseries = self.analyzer.get_timeseries(to_csv=True)
+        print(hw_timeseries)
+        print(sw_timeseries)
         print(self.analyzer.get_aggregated_metrics(to_csv=True))
         self.analyzer.get_timeseries_plot()
 
