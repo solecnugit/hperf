@@ -1,7 +1,7 @@
 #!/bin/bash
 TMP_DIR=/home/ningli/hperf/tools/test_res
 sar_binary="$TMP_DIR"/sar.log
-sar -A -o "$sar_binary" 1 30 > /dev/null 2>&1
+sar -A -o "$sar_binary" 1 10 > /dev/null 2>&1
 
 # CPU Utilization
 sadf -d "$sar_binary" --  -u | sed 's/;/,/g' > "$TMP_DIR"/sar_u
@@ -15,16 +15,16 @@ sadf -d "$sar_binary" --  -u | sed 's/;/,/g' > "$TMP_DIR"/sar_u
 output_file="$TMP_DIR"/sar_n_dev
 # 保留第一行的列名称
 sadf -d "$sar_binary" -- -n DEV | sed -n '1p' | sed 's/;/,/g' > "$output_file"
+# 使用 grep 过滤包含活动接口的行
 active_interfaces=$(ip link show | grep -e "state UP" | sed 's/://g' | awk '{print $2}')
-for interface in $active_interfaces; do
-    sadf -d "$sar_binary" -- -n DEV | sed 's/;/,/g' | grep ",$interface," >> "$output_file"
-done
+interfaces_regex=$(echo "$active_interfaces" | tr '\n' '|' | sed 's/|$//')
+sadf -d "$sar_binary" -- -n DEV | sed 's/;/,/g' | grep -E ",($interfaces_regex)," >> "$output_file"
 
 # Memory Utilization | %memused 内存利用率
 sadf -d "$sar_binary" -- -r | sed 's/;/,/g' > "$TMP_DIR"/sar_r
 
 # I/O和传送速率的统计信息 | bread/s 和 bwrtn/s: 每秒读和写的块数
-sadf -d "$sar_binary" -- -b | sed 's/;/,/g' > "$TMP_DIR"/sar_b
+# sadf -d "$sar_binary" -- -b | sed 's/;/,/g' > "$TMP_DIR"/sar_b
 
 # 磁盘设备利用情况 | %util 磁盘设备利用率
 # sadf -d "$sar_binary" -- -d | sed 's/;/,/g' > "$TMP_DIR"/sar_d
@@ -33,9 +33,7 @@ output_file="$TMP_DIR"/sar_d
 sadf -d "$sar_binary" -- -d | sed -n '1p' | sed 's/;/,/g' > "$output_file"
 sadf -d "$sar_binary" -- -d | sed 's/;/,/g' | grep ',sda,' >> "$output_file"
 
-
 # Memory Pages Statistics | %vmeff 虚拟内存效率
 sadf -d "$sar_binary" -- -B | sed 's/;/,/g' > "$TMP_DIR"/sar_B
-
 
 rm -f "$sar_binary"
