@@ -1,5 +1,5 @@
 #!/bin/bash
-TMP_DIR=/home/ningli/hperf/tools/test_res
+TMP_DIR=/home/sole/test
 sar_binary="$TMP_DIR"/sar.log
 sar -A -o "$sar_binary" 1 10 > /dev/null 2>&1
 
