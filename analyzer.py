@@ -54,8 +54,8 @@ class Analyzer:
                                     usecols=[0, 1, 2, 4])
         sar_u_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_u"), header=0)    # CPU util. ["%user", "%system"]
         sar_r_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_r"), header=0)    # mem. util. ["%memused"]
-        # sar_n_dev_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_n_dev"), header=0)    # network util ["%ifutil"]
-        # sar_d_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_d"), header=0)    # storage util. ["%util"]
+        sar_n_dev_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_n_dev"), header=0)    # network util ["%ifutil"]
+        sar_d_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_d"), header=0)    # storage util. ["%util"]
         
         # ------------ for perf data --------------
         # rename 'unit' according to self.event_groups.events[..]['type']
@@ -157,16 +157,22 @@ class Analyzer:
         
         # ------------ for sar data --------------
         sar_u_timeseries = sar_u_raw_data[["timestamp", r"%user", r"%system"]].groupby(["timestamp"]).agg(
-            USER=(r"%user", np.average),
-            SYSTEM=(r"%system", np.average)
-        ).reset_index()
+            CPU_UTIL_USER=(r"%user", np.average),
+            CPU_UTIL_SYS=(r"%system", np.average)
+        ).reset_index()    # CPU util. (user and system)
         sar_r_timeseries = sar_r_raw_data[["timestamp", r"%memused"]].groupby(["timestamp"]).agg(
-            MEMUSED=(r"%memused", np.average)
+            MEM_UTIL=(r"%memused", np.average)
+        ).reset_index().drop("timestamp", axis=1)    # Mem. util.
+        sar_n_dev_timeseries = sar_n_dev_raw_data[["timestamp", r"%ifutil"]].groupby(["timestamp"]).agg(
+            NET_UTIL=(r"%ifutil", np.average)
+        ).reset_index().drop("timestamp", axis=1)    # Network util.
+        sar_d_timeseries = sar_d_raw_data[["timestamp", r"%util"]].groupby(["timestamp"]).agg(
+            STORAGE_UTIL=(r"%util", np.average)
         ).reset_index().drop("timestamp", axis=1)
         
-        self.sw_timeseries = pd.concat([sar_u_timeseries, sar_r_timeseries], axis=1)        
+        self.sw_timeseries = pd.concat([sar_u_timeseries, sar_r_timeseries, sar_n_dev_timeseries, sar_d_timeseries], axis=1)        
 
-    def get_timeseries(self, to_csv: bool = False) -> pd.DataFrame:
+    def get_timeseries(self, to_csv: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         """
         if to_csv:
@@ -184,7 +190,7 @@ class Analyzer:
         """
         """
         perf_metrics = [ item["metric"] for item in self.event_groups.metrics ]
-        sar_metrics = ["USER", "SYSTEM", "MEMUSED"]
+        sar_metrics = ["CPU_UTIL_USER", "CPU_UTIL_SYS", "MEM_UTIL", "NET_UTIL", "STORAGE_UTIL"]
         
         axes = self.hw_timeseries.plot(x="timestamp", 
                                        y=perf_metrics,
@@ -210,6 +216,7 @@ class Analyzer:
         """
         """
         # use timeseries to get aggregated metrics.  
+        # Hardware metrics
         # for events, get the sum of values in differenet timestamps; for metrics, get the average of values in different timestamps. 
         metric_results = {}
         for item in self.event_groups.events:
@@ -218,6 +225,12 @@ class Analyzer:
         for item in self.event_groups.metrics:
             avg = self.hw_timeseries[item["metric"]].mean()
             metric_results[item["metric"]] = avg
+            
+        # Software metrics
+        for col_index, (col, series) in enumerate(self.sw_timeseries.items()):
+            if col_index != 0:
+                avg = series.mean()
+                metric_results[col] = avg
 
         self.aggregated_metrics = pd.DataFrame(metric_results, index=[0])
 
