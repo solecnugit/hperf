@@ -1,9 +1,20 @@
 #!/bin/bash\n
-TMP_DIR={HPERF_SAR_DIR}
+TMP_DIR=%%HPERF_SAR_DIR
 sar_binary="$TMP_DIR"/sar.log
-sar -A -o "$sar_binary" 1 {HPERF_SAR_TIME} > /dev/null 2>&1    # collect data to a binary file
-sadf -d "$sar_binary" -- {HPERF_P_STR} -u | sed 's/;/,/g' > "$TMP_DIR"/sar_u    # CPU util. ["%user", "%system"]
+
+sar -A -o "$sar_binary" 1 %%HPERF_SAR_TIME > /dev/null 2>&1    # collect data to a binary file
+
+sadf -d "$sar_binary" -- %%HPERF_P_STR -u | sed 's/;/,/g' > "$TMP_DIR"/sar_u    # CPU util. ["%user", "%system"]
 sadf -d "$sar_binary" -- -r | sed 's/;/,/g' > "$TMP_DIR"/sar_r    # mem. util. ["%memused"]
-sadf -d "$sar_binary" -- -n DEV | sed 's/;/,/g' > "$TMP_DIR"/sar_n_dev    # network util ["%ifutil"]
-sadf -d "$sar_binary" -- -d | sed 's/;/,/g' > "$TMP_DIR"/sar_d    # storage util. ["%util"]
+
+output_file="$TMP_DIR"/sar_n_dev
+sadf -d "$sar_binary" -- -n DEV | sed -n '1p' | sed 's/;/,/g' > "$output_file"    # preserve the first line
+active_interfaces=$(ip link show | grep -e "state UP" | sed 's/://g' | awk '{print $2}')    # filter active network devices via 'ip'
+interfaces_regex=$(echo "$active_interfaces" | tr '\n' '|' | sed 's/|$//')
+sadf -d "$sar_binary" -- -n DEV | sed 's/;/,/g' | grep -E ",($interfaces_regex)," >> "$output_file"    # network util ["%ifutil"]
+
+output_file="$TMP_DIR"/sar_d
+sadf -d "$sar_binary" -- -d | sed -n '1p' | sed 's/;/,/g' > "$output_file"    # preserve the first line
+sadf -d "$sar_binary" -- -d | sed 's/;/,/g' | grep ',sda,' >> "$output_file"    # storage util. ["%util"] (only keep 'sda' devices)
+
 rm -f "$sar_binary"

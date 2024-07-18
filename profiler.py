@@ -3,6 +3,10 @@ from event_group import EventGroup
 import logging
 from hperf_exception import ProfilerError
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from string import Template
+
+class HperfTemplete(Template):
+    delimiter = r"%%"
 
 class Profiler:
     """
@@ -166,12 +170,18 @@ class Profiler:
         else:
             raise ProfilerError("Fail to get test directory path on SUT when generating profiling script.")
         
-        script = "#!/bin/bash\n"
-        script += f'TMP_DIR={perf_dir}\n'
-        script += 'perf_result="$TMP_DIR"/perf_result\n'
-        script += 'perf_error="$TMP_DIR"/perf_error\n'
-        script += 'date +%Y-%m-%d" "%H:%M:%S.%N | cut -b 1-23 > "$TMP_DIR"/perf_start_timestamp\n'
-        script += f'3>"$perf_result" perf stat -e {self.event_groups.get_event_groups_str()} -A -a -x "\t" -I 1000 --log-fd 3 {self.configs["command"]} 2>"$perf_error"\n'
+        perf_parameters = {
+            "HPERF_PERF_DIR": perf_dir,
+            "HPERF_EVENT_GROUPS_STR": self.event_groups.get_event_groups_str(),
+            "HPERF_COMMAND": self.configs["command"]
+        }
+        
+        with open("./tools/perf_template", mode="r", encoding="utf-8") as f:
+            script = f.read()
+            
+        perf_template = HperfTemplete(script)
+        
+        script = perf_template.safe_substitute(perf_parameters)
 
         self.logger.debug("profiling script by perf: \n" + script)
         return script
@@ -205,7 +215,9 @@ class Profiler:
         with open("./tools/sar_template", mode="r", encoding="utf-8") as f:
             script = f.read()
             
-        script = script.format(**sar_parameters) 
+        sar_template = HperfTemplete(script)
+        
+        script = sar_template.safe_substitute(sar_parameters)
 
         self.logger.debug("profiling script by sar: \n" + script)
         return script
