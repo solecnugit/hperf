@@ -196,24 +196,16 @@ class Profiler:
         else:
             p_str = "-P " + ",".join([ str(item) for item in self.configs["cpu_list"]])
             
-        script = ('#!/bin/bash\n'
-                  f'TMP_DIR={sar_dir}\n'
-                  'sar_binary="$TMP_DIR"/sar.log\n'
-                  f'sar -A -o "$sar_binary" 1 {self.configs["time"]} > /dev/null 2>&1\n'
-                  f'sadf -d "$sar_binary" -- {p_str} -u | '    # CPU util. ["%user", "%system"]
-                  "sed 's/;/,/g' "
-                  '> "$TMP_DIR"/sar_u\n'
-                  f'sadf -d "$sar_binary" -- -r | '    # mem. util. ["%memused"]
-                  "sed 's/;/,/g' "
-                  '> "$TMP_DIR"/sar_r\n'
-                  f'sadf -d "$sar_binary" -- -n DEV | '    # network util ["%ifutil"]
-                  "sed 's/;/,/g' "
-                  '> "$TMP_DIR"/sar_n_dev\n'
-                  f'sadf -d "$sar_binary" -- -d | '    # storage util. ["%util"]
-                  "sed 's/;/,/g' "
-                  '> "$TMP_DIR"/sar_d\n'
-                  'rm -f "$sar_binary"\n'
-                  )
+        sar_parameters = {
+            "HPERF_SAR_DIR": sar_dir,
+            "HPERF_P_STR": p_str,
+            "HPERF_SAR_TIME": self.configs["time"]
+        }
+        
+        with open("./tools/sar_template", mode="r", encoding="utf-8") as f:
+            script = f.read()
+            
+        script = script.format(**sar_parameters) 
 
         self.logger.debug("profiling script by sar: \n" + script)
         return script

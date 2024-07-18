@@ -1,0 +1,9 @@
+#!/bin/bash\n
+TMP_DIR={HPERF_SAR_DIR}
+sar_binary="$TMP_DIR"/sar.log
+sar -A -o "$sar_binary" 1 {HPERF_SAR_TIME} > /dev/null 2>&1    # collect data to a binary file
+sadf -d "$sar_binary" -- {HPERF_P_STR} -u | sed 's/;/,/g' > "$TMP_DIR"/sar_u    # CPU util. ["%user", "%system"]
+sadf -d "$sar_binary" -- -r | sed 's/;/,/g' > "$TMP_DIR"/sar_r    # mem. util. ["%memused"]
+sadf -d "$sar_binary" -- -n DEV | sed 's/;/,/g' > "$TMP_DIR"/sar_n_dev    # network util ["%ifutil"]
+sadf -d "$sar_binary" -- -d | sed 's/;/,/g' > "$TMP_DIR"/sar_d    # storage util. ["%util"]
+rm -f "$sar_binary"
