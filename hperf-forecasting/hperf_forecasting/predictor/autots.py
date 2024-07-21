@@ -18,7 +18,11 @@ class AutoTsPredictor(BasePredictor):
 
         prediction = self.model.predict()
 
-        return prediction.forecast  # type: ignore
+        forecast = prediction.forecast  # type: ignore
+        forecast[self.dataset.get_time_col()] = forecast.index
+        forecast = forecast.reset_index(drop=True)
+
+        return forecast
 
     def fit(self, **kwargs) -> None:
         self.predict_len = kwargs.pop("predict_len", 30)
