@@ -15,15 +15,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from string import Template
 
 
-class OptParser:
+class CollectorParser:
     """
-    `OptParser` is responsible for parsing and validating options and arguments passed from command line. 
+    `CollectorParser` is responsible for parsing and validating options and arguments passed from command line. 
     It will create a dict containing all configurations may used by other modules such as `Connector`, `Profiler` and `Analyzer`, etc. 
     """
 
     def __init__(self) -> None:
         """
-        Constructor of `OptParser`
+        Constructor of `CollectorParser`
         """
         self.logger = logging.getLogger("hperf")
 
@@ -56,15 +56,6 @@ class OptParser:
         self.parser.add_argument("-v", "--verbose",
                                  action="store_true",
                                  help="increase output verbosity")
-        #   [--cpu CPU]
-        # hperf will conduct a system-wide profiling so that the list will not affect performance data collection
-        # but will affect the aggregation of raw performance data.
-        # If not specified, 'Analyzer' will aggregate performance data of all CPUs.
-        self.parser.add_argument("-c", "--cpu",
-                                 metavar="CPU_ID_LIST",
-                                 type=str,
-                                 default="all",
-                                 help="specify the scope of performance data aggregation by passing a list of cpu ids.")
         #   [--time SECOND]
         # TODO: this option is currently used for profiling by sar, because sar needs to specify the time of profiling.
         # the profiling time of sar should equal to the time of workload running, 
@@ -110,12 +101,6 @@ class OptParser:
         else:
             raise Exception("Workload is not specified.")
 
-        # step 3. scope of performance data aggregation
-        if args.cpu != "all":
-            configs["cpu_list"] = self.__parse_cpu_list(args.cpu)
-        else:
-            configs["cpu_list"] = "all"
-
         # step 4. temporary directory
         if args.tmp_dir:
             configs["tmp_dir"] = args.tmp_dir
@@ -128,42 +113,6 @@ class OptParser:
 
         return configs
 
-    def __parse_cpu_list(self, cpu_list: str) -> list:
-        """
-        Parse the string of cpu list with comma (`,`) and hyphen (`-`), and get the list of cpu ids. 
-        
-        e.g. if `cpu_list = '2,4-8'`, the method will return `[2, 4, 5, 6, 7, 8]`
-        
-        :param `cpu_list`: a string of cpu list
-        :return: a list of cpu ids (the elements are non-negative and non-repetitive)
-        :raises:
-            `ParserError`: if the string of cpu list is invalid (e.g. negative cpu id)
-        """
-        cpu_ids = []
-        cpu_id_slices = cpu_list.split(",")
-        try:
-            for item in cpu_id_slices:
-                if item.find("-") == -1:
-                    cpu_ids.append(int(item))
-                else:
-                    start_cpu_id = int(item.split("-")[0])
-                    end_cpu_id = int(item.split("-")[1])
-                    for i in range(start_cpu_id, end_cpu_id + 1):
-                        cpu_ids.append(i)
-        except ValueError:
-            raise Exception(f"Invalid argument {cpu_list} for -c/--cpu option")
-
-        # make the list non-repetitive
-        reduced_cpu_ids = list(set(cpu_ids))
-        reduced_cpu_ids.sort(key=cpu_ids.index)
-
-        # check if all cpu ids are valid (non-negative)
-        for cpu_id in reduced_cpu_ids:
-            if cpu_id < 0:
-                raise Exception(f"Invalid argument {cpu_list} for -c/--cpu option")
-        
-        return reduced_cpu_ids
-    
 
 class Connector:
     """
@@ -492,7 +441,7 @@ class Profiler:
         """
         sanity_check_flag = True
 
-        # 1. check if there is any other profiler (such as VTune, perf, etc.) is already running
+        # 1. check if there are any other profilers (e.g. VTune, perf, etc.) already running
         # TODO: add more pattern of profilers may interfere measurement
         process_check_list = [
             "linux-tools/.*/perf", 
@@ -587,10 +536,7 @@ class Profiler:
         """
         sar_dir = self.connector.test_dir
         
-        if self.configs["cpu_list"] == "all":
-            p_str = ""
-        else:
-            p_str = "-P " + ",".join([ str(item) for item in self.configs["cpu_list"]])
+        p_str = ""
             
         sar_parameters = {
             "HPERF_SAR_DIR": sar_dir,
@@ -626,7 +572,7 @@ class Controller:
         self.__argv = argv    # (private) the original command line options and parameters
 
         self.configs = {}    # a dict contains parsed configurations for the following steps
-        self.parser = OptParser()
+        self.parser = CollectorParser()
 
         self.connector: Connector = None
         self.profiler: Profiler = None
