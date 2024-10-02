@@ -1,0 +1,28 @@
+{
+    "cpuInfo": {
+        "cpuInfo": "CPU 信息",
+        "architecture": "架构",
+        "vendorId": "供应商 ID",
+        "modelName": "型号名称",
+        "cores": "每插槽核心数",
+        "threads": "每核心线程数",
+        "maxMHz": "最大频率 (MHz)",
+        "minMHz": "最小频率 (MHz)",
+        "viewMore": "查看更多",
+        "cache": {
+            "l1i": "L1 指令缓存",
+            "l1d": "L1 数据缓存",
+            "l2": "L2 缓存",
+            "l3": "L3 缓存"
+        }
+    },
+    "cards": {
+        "cpuUtilization": "CPU 利用率",
+        "avgCpuUtilization": "平均 CPU 利用率",
+        "maxCpuUtilization": "最大 CPU 利用率",
+        "frequency": "CPU 频率",
+        "frequencyDescription": "CPU 每秒时钟周期数",
+        "cpi": "CPI",
+        "cpiDescription": "每指令周期数"
+    }
+}
