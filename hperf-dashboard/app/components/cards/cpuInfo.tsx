@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CPUInfoType } from "./types";
 
-function infoForType(cpuInfo: CpuInfo, type: CPUInfoType) {
+function InfoForType({ cpuInfo, type }: { cpuInfo: CpuInfo, type: CPUInfoType }) {
   const t = useTranslations("cpuInfo");
 
   switch (type) {
@@ -84,7 +84,7 @@ export default function CpuInfoCard({
       </CardHeader>
       <CardContent>
         <CardDescription className="text-md">
-          {infoForType(cpuInfo, type)}
+          <InfoForType cpuInfo={cpuInfo} type={type} />
         </CardDescription>
       </CardContent>
     </Card>

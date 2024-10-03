@@ -42,7 +42,19 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export function RichLinePlotCard({ metrics, metricName, tableExpanded, onMetricChange, onTableStateChange }: { metrics: TimeSeriesData[], metricName: string, tableExpanded: boolean, onMetricChange: (metricName: string) => void, onTableStateChange: (expanded: boolean) => void }) {
+export function RichLineplotCard({
+  metrics,
+  metricName,
+  tableExpanded,
+  onMetricChange,
+  onTableStateChange,
+}: {
+  metrics: TimeSeriesData[];
+  metricName: string;
+  tableExpanded: boolean;
+  onMetricChange: (metricName: string) => void;
+  onTableStateChange: (expanded: boolean) => void;
+}) {
   const mt = useTranslations("metrics");
   const t = useTranslations("cards");
 
@@ -116,21 +128,23 @@ export function RichLinePlotCard({ metrics, metricName, tableExpanded, onMetricC
           <CardDescription></CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <Select onValueChange={(name) => {
-            onMetricChange(name);
-          }}>
+          <Select
+            onValueChange={(name) => {
+              onMetricChange(name);
+            }}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder={mt(metricName)} />
             </SelectTrigger>
             <SelectContent>
               {Object.entries(groupedMetricNames).map(
                 ([groupName, metricNames]) => (
-                  <SelectGroup>
+                  <SelectGroup key={groupName + metricName}>
                     <SelectLabel className="font-semibold leading-8">
                       {mt(`group.${groupName}`)}
                     </SelectLabel>
                     {metricNames.map((metricName) => (
-                      <SelectItem value={metricName}>
+                      <SelectItem value={metricName} key={metricName}>
                         {mt(metricName)}({metricName})
                       </SelectItem>
                     ))}
@@ -225,9 +239,16 @@ export function RichLinePlotCard({ metrics, metricName, tableExpanded, onMetricC
                 </TableHeader>
                 <TableBody className="overflow-y-auto h-[240px]">
                   {metrics.toReversed().map((metric) => (
-                    <TableRow className="text-right leading-8" key={metric.timestamp + metricName}>
-                      <TableCell className="w-1/2">{new Date(metric.timestamp).toLocaleTimeString()}</TableCell>
-                      <TableCell className="w-1/2">{metric[metricName as NumericFields].toFixed(2)}</TableCell>
+                    <TableRow
+                      className="text-right leading-8"
+                      key={metric.timestamp + metricName}
+                    >
+                      <TableCell className="w-1/2">
+                        {new Date(metric.timestamp).toLocaleTimeString()}
+                      </TableCell>
+                      <TableCell className="w-1/2">
+                        {metric[metricName as NumericFields].toFixed(2)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

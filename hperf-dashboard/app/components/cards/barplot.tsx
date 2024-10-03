@@ -13,14 +13,12 @@ import { BarChart, Bar, Rectangle, XAxis } from "recharts";
 
 export default function BarplotCard({
   metricName,
-  descriptionI18nKey,
   unit = "",
   metrics,
   barColorStyle = "hsl(var(--chart-2))",
 }: {
   metrics: TimeSeriesData[];
-  metricName: string;
-  descriptionI18nKey: string;
+    metricName: string;
   unit?: string;
   barColorStyle?: string;
 }) {
@@ -46,7 +44,7 @@ export default function BarplotCard({
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="px-4 pb-0 pt-2">
         <CardTitle>{t(metricName)}</CardTitle>
-        <CardDescription>{t(descriptionI18nKey)}</CardDescription>
+        <CardDescription>{t(`desc.${metricName}`)}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-2">
         <div className="flex items-baseline gap-2 text-3xl font-bold tabular-nums leading-none">

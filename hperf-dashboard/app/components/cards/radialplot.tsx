@@ -19,15 +19,13 @@ import {
 
 export default function RadialPlotCard({
   metricName,
-  descriptionI18nKey,
   metrics,
   maxValue = 5e9,
   radialColorStyle = "hsl(var(--chart-4))",
   valueFormatter,
 }: {
   metrics: TimeSeriesData[];
-  metricName: string;
-    descriptionI18nKey: string,
+    metricName: string;
   radialColorStyle?: string;
   maxValue?: number;
   valueFormatter?: (value: number) => string;
@@ -62,7 +60,7 @@ export default function RadialPlotCard({
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="drag-handle px-2 pt-2 pb-0">
         <CardTitle>{t(metricName)}</CardTitle>
-        <CardDescription>{t(descriptionI18nKey)}</CardDescription>
+        <CardDescription>{t(`desc.${metricName}`)}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-1 items-center">
         <ChartContainer

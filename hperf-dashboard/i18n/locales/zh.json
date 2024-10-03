@@ -23,7 +23,18 @@
     "frequency": "CPU 频率",
     "frequencyDescription": "CPU 每秒时钟周期数",
     "cpi": "CPI",
-    "cpiDescription": "每指令周期数"
+    "cpiDescription": "每指令周期数",
+    "type": "组件类型",
+    "new": "新组件",
+    "create": "创建组件",
+    "lineplot": "折线图",
+    "barplot": "柱状图",
+    "radialplot": "径向图",
+    "cpuInfo": "CPU 信息",
+    "richLineplot": "富折线图",
+    "metricName": "指标名称",
+    "average": "平均",
+    "max": "最大"
   },
   "metrics": {
     "timestamp": "时间戳",
@@ -76,9 +87,9 @@
       "cycles": "指令周期相关",
       "cache": "缓存相关"
     },
-    "expandTable": "展开表格"
-  },
-  "drawer": {
-    "new": "新组件"
+    "expandTable": "展开表格",
+    "model": "架构",
+    "cores": "核心数",
+    "cache": "缓存"
   }
 }

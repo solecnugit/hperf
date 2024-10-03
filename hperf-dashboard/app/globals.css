@@ -76,9 +76,9 @@ body {
     @apply bg-background text-foreground;
   }
 
-    ::-webkit-scrollbar {
-      width: 4px;
-      height: 12px;
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 12px;
   }
 
   ::-webkit-scrollbar-thumb {

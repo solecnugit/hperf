@@ -18,20 +18,17 @@ import { LineChart, CartesianGrid, YAxis, XAxis, Line } from "recharts";
 
 export default function LinePlotCard({
   metricName,
-  descriptionI18nKey,
   unit = "",
   metrics,
   lineColorStyle = "hsl(var(--chart-1))",
 }: {
   metrics: TimeSeriesData[];
     metricName: NumericFields;
-  descriptionI18nKey: string;
   unit?: string;
   lineColorStyle?: string;
 }) {
   const t = useTranslations("cards");
   const mt = useTranslations("metrics");
-
 
   const avgValue = useMemo(() => {
     if (metrics.length === 0) {
@@ -80,7 +77,7 @@ export default function LinePlotCard({
               color: lineColorStyle,
             },
           }}
-          className="w-full"
+          className="w-full min-h-[60px] max-h-[220px]"
         >
           <LineChart
             accessibilityLayer
