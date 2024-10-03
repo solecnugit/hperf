@@ -20,7 +20,6 @@ import {
 export default function RadialPlotCard({
   metricName,
   descriptionI18nKey,
-  unit = "",
   metrics,
   maxValue = 5e9,
   radialColorStyle = "hsl(var(--chart-4))",
@@ -28,8 +27,7 @@ export default function RadialPlotCard({
 }: {
   metrics: TimeSeriesData[];
   metricName: string;
-  descriptionI18nKey: string;
-  unit?: string;
+    descriptionI18nKey: string,
   radialColorStyle?: string;
   maxValue?: number;
   valueFormatter?: (value: number) => string;

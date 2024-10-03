@@ -40,6 +40,8 @@ import RGL, { WidthProvider } from "react-grid-layout";
 import { CpuInfo, fetchCpuInfoJson } from "@/api/cpuInfo";
 import CpuInfoCard from "../components/cards/cpuInfo";
 import { RichLinePlotCard } from "../components/cards/richLinePlot";
+import { useLocalStorage } from "./storage";
+import { BarplotCardProps, BaseCardLayout, BaseCardProps, CardProps, CpuInfoCardProps, HperfCardProps, LineplotCardProps, RadialplotCardProps, RichLinePlotCardProps } from "../components/cards/types";
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -78,33 +80,112 @@ export default function Home() {
     return (value / 1000000000).toFixed(2) + " GHz";
   };
 
-  const layout = [
-    { i: "hperf", x: 0, y: 0, w: 1, h: 1 },
-    { i: "cpuUtilization", x: 1, y: 1, w: 3, h: 5 },
-    { i: "frequency", x: 3, y: 0, w: 3, h: 4 },
-    { i: "cpi", x: 5, y: 0, w: 2, h: 2 },
-    { i: "cpuInfoCache", x: 7, y: 0, w: 3, h: 3 },
-    { i: "cpuInfoFreq", x: 9, y: 0, w: 2, h: 2 },
-    { i: "cpuInfoModel", x: 11, y: 0, w: 3, h: 4 },
-    { i: "lineplot", x: 0, y: 0, w: 12, h: 6 },
-  ];
+  const [cardStorages, setCardStorages] = useLocalStorage<CardProps[]>("cardStorages", [
+    { type: "hperf", id: "hperf", layout: { i: "hperf", x: 0, y: 0, w: 2, h: 2, resizable: false } },
+    // { i: "cpuUtilization", x: 1, y: 1, w: 3, h: 5 },
+    // { i: "frequency", x: 3, y: 0, w: 3, h: 4 },
+    // { i: "cpi", x: 5, y: 0, w: 2, h: 2 },
+    // { i: "cpuInfoCache", x: 7, y: 0, w: 3, h: 3 },
+    // { i: "cpuInfoFreq", x: 9, y: 0, w: 2, h: 2 },
+    // { i: "cpuInfoModel", x: 11, y: 0, w: 3, h: 4 },
+    // { i: "lineplot", x: 0, y: 0, w: 12, h: 6 },
+  ]);
+
+  const layouts = useMemo(() => {
+    return cardStorages.map((card) => {
+      return card.layout;
+    });
+  }, [cardStorages])
+
+  const mergeLayouts = (props: BaseCardLayout[]) => {
+    setCardStorages((prev) => {
+      return prev.map((card) => {
+        let layout = props.find((prop) => prop.i === card.layout.i);
+
+        if (layout) {
+          return {
+            ...card,
+            layout,
+          }
+        }
+
+        return card;
+      });
+    });
+  }
+
+  const cards = useMemo(() => {
+    if (!metrics || !cpuInfo) {
+      return null;
+    }
+
+    const factories = {
+      "hperf": (props: HperfCardProps) => <HperfCard />,
+      "lineplot": (props: LineplotCardProps) => <LinePlotCard metrics={metrics} {...props} />,
+      "barplot": (props: BarplotCardProps) => <BarplotCard metrics={metrics} {...props} />,
+      "radialplot": (props: RadialplotCardProps) => <RadialPlotCard metrics={metrics} {...props} />,
+      "cpuInfo": (props: CpuInfoCardProps) => <CpuInfoCard cpuInfo={cpuInfo} type={props.infoType} />,
+      "richLinePlot": (props: RichLinePlotCardProps) => <RichLinePlotCard metrics={metrics} onMetricChange={(metricName) => {
+        // @ts-ignore
+        setCardStorages((prev) => {
+          return prev.map((card) => {
+            if (card.type === "richLinePlot" && card.i == props.i) {
+              return {
+                ...card,
+                metricName,
+              }
+            }
+
+            return card;
+          });
+        });
+      }} onTableStateChange={(state) => {
+        setCardStorages((prev) => {
+          return prev.map((card) => {
+            if (card.type === "richLinePlot" && card.i == props.i) {
+              return {
+                ...card,
+                tableExpanded: state,
+              }
+            }
+
+            return card;
+          });
+        });
+      }} {...props} />,
+    }
+
+    return cardStorages.map((card) => {
+      console.log(card)
+
+      // @ts-ignore
+      let cardComponent = factories[card.type](card);
+
+      return (
+        <div key={card.i}>
+          {cardComponent}
+        </div>
+      )
+    })
+  }, [cardStorages, metrics, cpuInfo]);
 
   return (
     <div className="p-8">
       <ReactGridLayout
         className="layout mx-auto gap-8"
         cols={12}
-        layout={layout}
+        layout={layouts}
         rowHeight={60}
-        compactType="horizontal"
+        compactType="vertical"
         preventCollision={false}
         draggableHandle=".drag-handle"
         width={1920}
+        onLayoutChange={mergeLayouts}
       >
         <div key="hperf">
-          <HperfCard />
+          <HperfCard metrics={metrics} cpuInfo={cpuInfo} />
         </div>
-        <div key="cpuUtilization">
+        {/* <div key="cpuUtilization">
           {metrics && (
             <LinePlotCard
               metricName="cpuUtilization"
@@ -115,8 +196,8 @@ export default function Home() {
               metrics={metrics}
             />
           )}
-        </div>
-        <div key="frequency">
+        </div> */}
+        {/* <div key="frequency">
           {metrics && (
             <RadialPlotCard
               metricName="frequency"
@@ -125,8 +206,8 @@ export default function Home() {
               valueFormatter={formatFrequency}
             />
           )}
-        </div>
-        <div key="cpi">
+        </div> */}
+        {/* <div key="cpi">
           {metrics && (
             <BarplotCard
               metricName="cpi"
@@ -135,8 +216,8 @@ export default function Home() {
               metrics={metrics}
             />
           )}
-        </div>
-        <div key="cpuInfoFreq">
+        </div> */}
+        {/* <div key="cpuInfoFreq">
           {cpuInfo && <CpuInfoCard cpuInfo={cpuInfo} type="frequency" />}
         </div>
         <div key="cpuInfoCache">
@@ -147,7 +228,7 @@ export default function Home() {
         </div>
         <div key="lineplot">
           {metrics && <RichLinePlotCard metrics={metrics}></RichLinePlotCard>}
-        </div>
+        </div> */}
       </ReactGridLayout>
     </div>
   );

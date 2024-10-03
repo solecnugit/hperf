@@ -75,4 +75,22 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 12px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary;
+    @apply rounded-md;
+    @apply p-2;
+    @apply box-border;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+    @apply rounded-md;
+    @apply m-2;
+  }
 }

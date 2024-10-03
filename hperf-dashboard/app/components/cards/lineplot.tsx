@@ -18,22 +18,20 @@ import { LineChart, CartesianGrid, YAxis, XAxis, Line } from "recharts";
 
 export default function LinePlotCard({
   metricName,
-  avgI18nKey,
-  maxI18nKey,
   descriptionI18nKey,
   unit = "",
   metrics,
   lineColorStyle = "hsl(var(--chart-1))",
 }: {
   metrics: TimeSeriesData[];
-  metricName: NumericFields;
-  avgI18nKey: string;
-  maxI18nKey: string;
+    metricName: NumericFields;
   descriptionI18nKey: string;
   unit?: string;
   lineColorStyle?: string;
 }) {
   const t = useTranslations("cards");
+  const mt = useTranslations("metrics");
+
 
   const avgValue = useMemo(() => {
     if (metrics.length === 0) {
@@ -56,7 +54,7 @@ export default function LinePlotCard({
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="drag-handle flex flex-row items-center gap-4 space-y-0 py-2 [&>div]:flex-1">
         <div>
-          <CardDescription>{t(avgI18nKey)}</CardDescription>
+          <CardDescription>{t("average") + mt(metricName)}</CardDescription>
           <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums">
             {avgValue.toFixed(2)}
             <span className="text-sm font-normal tracking-normal text-muted-foreground">
@@ -65,7 +63,7 @@ export default function LinePlotCard({
           </CardTitle>
         </div>
         <div>
-          <CardDescription>{t(maxI18nKey)}</CardDescription>
+          <CardDescription>{t("max") + mt(metricName)}</CardDescription>
           <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums">
             {maxValue.toFixed(2)}
             <span className="text-sm font-normal tracking-normal text-muted-foreground">

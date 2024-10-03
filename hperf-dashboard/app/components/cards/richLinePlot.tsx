@@ -22,7 +22,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { TimeSeriesData } from "@/api/metrics";
+import { NumericFields, TimeSeriesData } from "@/api/metrics";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SelectGroup, SelectLabel } from "@radix-ui/react-select";
@@ -35,22 +35,16 @@ import {
 import {
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export function RichLinePlotCard({ metrics }: { metrics: TimeSeriesData[] }) {
+export function RichLinePlotCard({ metrics, metricName, tableExpanded, onMetricChange, onTableStateChange }: { metrics: TimeSeriesData[], metricName: string, tableExpanded: boolean, onMetricChange: (metricName: string) => void, onTableStateChange: (expanded: boolean) => void }) {
   const mt = useTranslations("metrics");
   const t = useTranslations("cards");
-
-  const [metricName, setMetricName] = useState("cpuUtilization");
-  const [tableExpanded, setTableExpanded] = useState(false);
-
-  const toggleTable = () => {
-    setTableExpanded(!tableExpanded);
-  };
 
   const lineColor = useMemo(() => {
     const seed = metricName
@@ -122,7 +116,9 @@ export function RichLinePlotCard({ metrics }: { metrics: TimeSeriesData[] }) {
           <CardDescription></CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <Select onValueChange={setMetricName}>
+          <Select onValueChange={(name) => {
+            onMetricChange(name);
+          }}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder={mt(metricName)} />
             </SelectTrigger>
@@ -150,7 +146,7 @@ export function RichLinePlotCard({ metrics }: { metrics: TimeSeriesData[] }) {
                 return;
               }
 
-              setTableExpanded(state);
+              onTableStateChange(state);
             }}
             className="z-100"
           ></Checkbox>
@@ -215,23 +211,23 @@ export function RichLinePlotCard({ metrics }: { metrics: TimeSeriesData[] }) {
           </ResizablePanel>
           {tableExpanded && <ResizableHandle />}
           {tableExpanded && (
-            <ResizablePanel className="px-2 h-[220px] max-h-[220px] overflow-y-scroll first:h-[220px] first:overflow-y-scroll">
-              <Table className="table-fixed">
-                <TableHeader>
+            <ResizablePanel className="px-2">
+              <Table containerClassName="h-fit max-h-[240px] relative overflow-y-auto">
+                <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead className="text-right sticky top-0">
+                    <TableHead className="text-right w-1/2 px-2 py-1">
                       {mt("timestamp")}
                     </TableHead>
-                    <TableHead className="text-right sticky top-0">
+                    <TableHead className="text-right w-1/2 px-2 py-1">
                       {mt(metricName)}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="overflow-y-auto h-[240px]">
                   {metrics.toReversed().map((metric) => (
-                    <TableRow className="text-right leading-8">
-                      <td>{new Date(metric.timestamp).toLocaleTimeString()}</td>
-                      <td>{metric[metricName].toFixed(2)}</td>
+                    <TableRow className="text-right leading-8" key={metric.timestamp + metricName}>
+                      <TableCell className="w-1/2">{new Date(metric.timestamp).toLocaleTimeString()}</TableCell>
+                      <TableCell className="w-1/2">{metric[metricName as NumericFields].toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

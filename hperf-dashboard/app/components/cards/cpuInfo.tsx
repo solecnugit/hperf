@@ -10,8 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-export type CPUInfoType = "model" | "cores" | "frequency" | "cache";
+import { CPUInfoType } from "./types";
 
 function infoForType(cpuInfo: CpuInfo, type: CPUInfoType) {
   const t = useTranslations("cpuInfo");

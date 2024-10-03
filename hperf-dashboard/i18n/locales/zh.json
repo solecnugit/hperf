@@ -77,5 +77,8 @@
       "cache": "缓存相关"
     },
     "expandTable": "展开表格"
+  },
+  "drawer": {
+    "new": "新组件"
   }
 }

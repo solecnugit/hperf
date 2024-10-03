@@ -96,6 +96,10 @@ const csvToJsMapping: Record<string, keyof TimeSeriesData> = {
 
 export type NumericFields = Exclude<keyof TimeSeriesData, "timestamp">;
 
+export const numericFields = Object.values(csvToJsMapping).filter(
+  (key) => key !== "timestamp",
+) as NumericFields[];
+
 export async function fetchMetricsCSV(): Promise<string> {
   const res = await fetch("/timeseries.csv");
   return await res.text();
