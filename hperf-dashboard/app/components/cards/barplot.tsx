@@ -25,9 +25,10 @@ export default function BarplotCard({ metricName, descriptionI18nKey, unit = "",
 
     return (
         <Card
-            className="max-w-xs col-span-3 row-span-1"
+            className="w-full h-full p-2 pt-2 select-none"
         >
-            <CardHeader className="p-4 pb-0">
+            <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
+            <CardHeader className="px-4 pb-0 pt-2">
                 <CardTitle>{t(metricName)}</CardTitle>
                 <CardDescription>
                     {t(descriptionI18nKey)}

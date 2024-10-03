@@ -111,6 +111,7 @@ function parseMetrics(rawData: string): TimeSeriesData[] {
     const header = lines[0].split(",");
 
     const now = new Date().getTime();
+    const validKeys = Object.keys(csvToJsMapping)
 
     const data = lines.slice(1).map((line) => {
         line = line.trim()
@@ -127,7 +128,7 @@ function parseMetrics(rawData: string): TimeSeriesData[] {
                 const timestamp = 1000 * parseInt(value) + now;
                 const time = new Date(timestamp);
                 obj[key] = time;
-            } else {
+            } else if (key) {
                 const mappedKey = csvToJsMapping[key] as Exclude<keyof TimeSeriesData, "timestamp">;
                 obj[mappedKey] = parseFloat(value);
             }

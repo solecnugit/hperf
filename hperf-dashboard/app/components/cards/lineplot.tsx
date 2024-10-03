@@ -26,9 +26,10 @@ export default function LinePlotCard({ metricName, avgI18nKey, maxI18nKey, descr
     }, [metrics]);
 
     return <Card
-        className="flex flex-col lg:max-w-md col-span-4 row-span-2"
+        className="flex flex-col w-full h-full px-2 pt-2 select-none"
     >
-        <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2 [&>div]:flex-1">
+        <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
+        <CardHeader className="drag-handle flex flex-row items-center gap-4 space-y-0 py-2 [&>div]:flex-1">
             <div>
                 <CardDescription>{t(avgI18nKey)}</CardDescription>
                 <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums">
@@ -99,7 +100,6 @@ export default function LinePlotCard({ metricName, avgI18nKey, maxI18nKey, descr
                         content={<ChartTooltipContent
                             indicator="line"
                             labelFormatter={(value, payload) => {
-                                console.log(payload)
                                 return new Date(payload[0]["payload"]?.timestamp || 0).toLocaleTimeString()
                             }} />}
                         cursor={false} />
