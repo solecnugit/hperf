@@ -5,9 +5,8 @@ import "../globals.css";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
 
 export default async function LocaleLayout({
   children,
-  params: { locale }
+  params: { locale },
 }: Readonly<{
   children: React.ReactNode;
   params: { locale: string };
