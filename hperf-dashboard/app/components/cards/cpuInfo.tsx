@@ -1,3 +1,5 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 
 import { CpuInfo } from "api/cpuInfo";
@@ -71,7 +73,7 @@ export default function CpuInfoCard({
   cpuInfo,
   type,
 }: {
-  cpuInfo: CpuInfo;
+    cpuInfo: CpuInfo | null;
   type: CPUInfoType;
 }) {
   const t = useTranslations("cpuInfo");
@@ -83,8 +85,8 @@ export default function CpuInfoCard({
         <CardTitle>{t("cpuInfo")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <CardDescription className="text-md">
-          <InfoForType cpuInfo={cpuInfo} type={type} />
+        <CardDescription className="text-md" suppressHydrationWarning>
+          {cpuInfo && <InfoForType cpuInfo={cpuInfo} type={type} />}
         </CardDescription>
       </CardContent>
     </Card>

@@ -1,3 +1,5 @@
+"use client";
+
 import { NumericFields, TimeSeriesData } from "@/api/metrics";
 import { computeOne } from "@/app/zh/metrics";
 import {

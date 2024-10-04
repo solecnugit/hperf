@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic"
-
 import {
   Card,
   CardContent,
@@ -38,7 +36,6 @@ import LinePlotCard from "../components/cards/lineplot";
 import BarplotCard from "../components/cards/barplot";
 import RadialPlotCard from "../components/cards/radialplot";
 
-import RGL, { WidthProvider } from "react-grid-layout";
 import { CpuInfo, fetchCpuInfoJson } from "@/api/cpuInfo";
 import CpuInfoCard from "../components/cards/cpuInfo";
 import { RichLineplotCard } from "../components/cards/richLineplot";
@@ -64,9 +61,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import NewCardDialog from "../components/cards/dialog";
-import { unstable_setRequestLocale } from 'next-intl/server';
 
-const ReactGridLayout = WidthProvider(RGL);
+// import RGL, { WidthProvider } from "react-grid-layout";
+
+// const ReactGridLayout = WidthProvider(RGL);
+
+import dynamic from "next/dynamic";
+
+const ReactGridLayout = dynamic(async () => {
+  const module = await import("react-grid-layout")
+  const m = module.default;
+
+  return m.WidthProvider(m);
+}, { ssr: false });
 
 export default function Home() {
   const t = useTranslations("cards");
@@ -110,37 +117,28 @@ export default function Home() {
       {
         type: "hperf",
         id: "hperf",
-        layout: { i: "hperf", x: 0, y: Infinity, w: 2, h: 2 },
       },
     ],
   );
 
-  const layouts = useMemo(() => {
-    return cardStorages.map((card) => {
-      return card.layout;
-    });
-  }, [cardStorages]);
+  const [cardLayouts, setCardLayouts] = useLocalStorage<BaseCardLayout[]>(
+    "cardLayouts",
+    [
+      {
+        i: "hperf",
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2,
+        resizable: true,
+      },
+    ],
+  );
 
   const onLayoutChange = (props: BaseCardLayout[]) => {
     if (props.length == 0) return
 
-    setCardStorages((prev) => {
-      return prev.map((card) => {
-        const layout = props.find((prop) => prop.i === card.layout.i);
-
-        if (layout) {
-          return {
-            ...card,
-            layout: {
-              ...card.layout,
-              ...layout,
-            }
-          }
-        }
-
-        return card;
-      });
-    });
+    setCardLayouts(props);
   };
 
   const removeCard = (id: string) => {
@@ -149,39 +147,39 @@ export default function Home() {
     }
 
     return () => {
+      setCardLayouts((prev) => {
+        return prev?.filter((layout) => layout.i !== id);
+      });
+
       setCardStorages((prev) => {
-        return prev.filter((card) => card.layout.i !== id);
+        return prev?.filter((card) => card.id !== id);
       });
     }
   }
 
   const cards = useMemo(() => {
-    if (!metrics || !cpuInfo) {
-      return null;
-    }
-
     const factories = {
       hperf: (props: HperfCardProps) => <HperfCard />,
       lineplot: (props: LineplotCardProps) => (
-        <LinePlotCard metrics={metrics} {...props} />
+        <LinePlotCard metrics={metrics || []} {...props} />
       ),
       barplot: (props: BarplotCardProps) => (
-        <BarplotCard metrics={metrics} {...props} />
+        <BarplotCard metrics={metrics || []} {...props} />
       ),
       radialplot: (props: RadialplotCardProps) => (
-        <RadialPlotCard metrics={metrics} {...props} />
+        <RadialPlotCard metrics={metrics || []} {...props} />
       ),
       cpuInfo: (props: CpuInfoCardProps) => (
         <CpuInfoCard cpuInfo={cpuInfo} type={props.infoType} />
       ),
       richLineplot: (props: RichLineplotCardsProps) => (
         <RichLineplotCard
-          metrics={metrics}
+          metrics={metrics || []}
           onMetricChange={(metricName) => {
             // @ts-ignore
             setCardStorages((prev) => {
-              return prev.map((card) => {
-                if (card.type === "richLineplot" && card.layout.i == props.layout.i) {
+              return prev?.map((card) => {
+                if (card.type === "richLineplot" && card.id == props.id) {
                   return {
                     ...card,
                     metricName,
@@ -194,8 +192,8 @@ export default function Home() {
           }}
           onTableStateChange={(state) => {
             setCardStorages((prev) => {
-              return prev.map((card) => {
-                if (card.type === "richLineplot" && card.layout.i == props.layout.i) {
+              return prev?.map((card) => {
+                if (card.type === "richLineplot" && card.id == props.id) {
                   return {
                     ...card,
                     tableExpanded: state,
@@ -215,16 +213,14 @@ export default function Home() {
       // @ts-ignore
       const cardComponent = factories[card.type](card);
 
-      debugger
-
-      return <div key={card.layout.i} onDoubleClick={
-        removeCard(card.layout.i)
+      return <div key={card.id} onDoubleClick={
+        removeCard(card.id)
       }>{cardComponent}</div>;
     });
-  }, [cardStorages, metrics, cpuInfo]);
+  }, [cardStorages, cardLayouts, metrics, cpuInfo]);
 
   const createCard = ({ type, metricName }: { type: string; metricName: string }) => {
-    const randomId = ((new Date()).getTime() * Math.random()).toString(16);
+    const randomId = ((new Date()).getTime() * Math.random() * 100000).toFixed(0);
     const cardType = type as CardType;
 
     const randomBrightColor = () => {
@@ -238,36 +234,38 @@ export default function Home() {
       metricName: metricName as NumericFields,
       id: randomId,
       unit: "",
-      layout: {
-        i: randomId,
-        x: 0,
-        y: Infinity,
-        w: 2,
-        h: 2,
-        resizable: true,
-      },
     };
+
+    const newCardLayout = {
+      x: 0, y: Infinity, i: randomId, h: 2, w: 2
+    } as BaseCardLayout;
 
     if (cardType == "lineplot") {
       // @ts-ignore
       newCard["lineColorStyle"] = randomBrightColor();
-      newCard["layout"].h = 3;
-      newCard["layout"].w = 4;
+      newCardLayout.h = 3;
+      newCardLayout.w = 4;
+      newCardLayout.minH = 3;
+      newCardLayout.minW = 4;
       newCard["unit"] = metricName == "cpuUtilization" ? "%" : "";
     }
 
     if (cardType == "barplot") {
       // @ts-ignore
       newCard["barColorStyle"] = randomBrightColor();
-      newCard["layout"].h = 2;
-      newCard["layout"].w = 3;
+      newCardLayout.h = 2;
+      newCardLayout.w = 3;
+      newCardLayout.minH = 2;
+      newCardLayout.minW = 3;
     }
 
     if (cardType == "radialplot") {
       // @ts-ignore
       newCard["radialColorStyle"] = randomBrightColor();
-      newCard["layout"].h = 4;
-      newCard["layout"].w = 3;
+      newCardLayout.h = 4;
+      newCardLayout.w = 3;
+      newCardLayout.minH = 4;
+      newCardLayout.minW = 3;
     }
 
     if (cardType == "radialplot" && metricName == "frequency") {
@@ -276,23 +274,37 @@ export default function Home() {
     }
 
     if (cardType == "cpuInfo") {
-      newCard["layout"].h = 4;
-      newCard["layout"].w = 3;
+      newCardLayout.h = 4;
+      newCardLayout.w = 3;
+      newCardLayout.minH = 2;
+      newCardLayout.minW = 3;
       // @ts-ignore
       newCard["infoType"] = metricName;
     }
 
     if (type === "richLineplot") {
-      newCard["layout"].w = 12;
-      newCard["layout"].h = 6;
+      newCardLayout.w = 12;
+      newCardLayout.h = 6;
+      newCardLayout.minH = 6;
+      newCardLayout.minW = 12;
       // @ts-ignore
       newCard["tableExpanded"] = false;
     }
+
+    setCardLayouts((prev) => {
+      if (prev) {
+        return prev.concat(newCardLayout);
+      } else {
+        return [newCardLayout];
+      }
+    });
 
     // @ts-ignore
     setCardStorages((prev) => {
       if (prev) {
         return [...prev, newCard];
+      } else {
+        return [newCard];
       }
     });
   }
@@ -300,21 +312,21 @@ export default function Home() {
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div className="p-8 w-full h-screen">
-          <NewCardDialog
-            onSubmit={(data) => {
-              createCard(data)
-              setNewCardDialogOpen(false);
-            }}
-            onCancel={() => {
-              setNewCardDialogOpen(false);
-            }}
-            isOpen={isNewCardDialogOpen}
-          ></NewCardDialog>
+        <NewCardDialog
+          onSubmit={(data) => {
+            createCard(data)
+            setNewCardDialogOpen(false);
+          }}
+          onCancel={() => {
+            setNewCardDialogOpen(false);
+          }}
+          isOpen={isNewCardDialogOpen}
+        ></NewCardDialog>
+        <div className="p-8 w-full h-screen flex-1">
           <ReactGridLayout
             className="layout mx-auto gap-8"
             cols={12}
-            layout={layouts}
+            layout={cardLayouts}
             rowHeight={60}
             compactType="vertical"
             preventCollision={false}
@@ -339,15 +351,4 @@ export default function Home() {
       </ContextMenuContent>
     </ContextMenu>
   );
-}
-
-{
-  /* <div className="grid w-full gap-6 grid-cols-12">
-        <HperfCard />
-        {metrics && (<LinePlotCard metricName="cpuUtilization" avgI18nKey="avgCpuUtilization" descriptionI18nKey="cpuUtilization" unit="%" maxI18nKey="maxCpuUtilization" metrics={metrics} />)}
-        {metrics && (<RadialPlotCard metricName="frequency" descriptionI18nKey="frequencyDescription" metrics={metrics} valueFormatter={
-          formatFrequency
-        } />)}
-        {metrics && (<BarplotCard metricName="cpi" descriptionI18nKey="cpiDescription" unit="" metrics={metrics}  />)}
-      </div> */
 }

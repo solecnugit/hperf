@@ -88,7 +88,7 @@ function CardForm({
         }
 
         if (selectedType == "cpuInfo") {
-            return ["model", "cores", "frequency", "cache"];
+            return ["model", "frequency", "cache"];
         }
 
         return numericFields;

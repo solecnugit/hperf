@@ -1,3 +1,5 @@
+"use client";
+
 import { TimeSeriesData } from "@/api/metrics";
 import {
   Card,

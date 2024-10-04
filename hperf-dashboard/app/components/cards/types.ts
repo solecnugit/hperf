@@ -7,6 +7,8 @@ export interface BaseCardLayout {
     w: number;
     h: number;
     resizable?: boolean;
+    minW?: number;
+    minH?: number;
 }
 
 export type CardType =
@@ -19,7 +21,6 @@ export type CardType =
 
 export interface BaseCardProps {
     type: CardType;
-    layout: BaseCardLayout;
     id: string;
 }
 
@@ -47,9 +48,9 @@ export interface HperfCardProps extends BaseCardProps {
     type: "hperf";
 }
 
-export type CPUInfoType = "model" | "cores" | "frequency" | "cache";
+export type CPUInfoType = "model" | "frequency" | "cache";
 
-const cpuInfoTypes = ["model", "cores", "frequency", "cache"] as const;
+const cpuInfoTypes = ["model", "frequency", "cache"] as const;
 
 export interface CpuInfoCardProps extends PlotCardProps {
     type: "cpuInfo";
