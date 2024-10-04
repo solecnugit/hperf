@@ -27,7 +27,7 @@ export default function RadialPlotCard({
   valueFormatter,
 }: {
   metrics: TimeSeriesData[];
-    metricName: string;
+  metricName: string;
   radialColorStyle?: string;
   maxValue?: number;
   valueFormatter?: (value: number) => string;

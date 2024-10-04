@@ -7,7 +7,7 @@ import "react-resizable/css/styles.css";
 
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
-import { unstable_setRequestLocale } from 'next-intl/server';
+import { unstable_setRequestLocale } from "next-intl/server";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   description: "Hperf Dashboard",
 };
 
-import { routing } from '@/i18n/routing';
+import { routing } from "@/i18n/routing";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

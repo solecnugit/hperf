@@ -25,7 +25,7 @@ export default function LinePlotCard({
   lineColorStyle = "hsl(var(--chart-1))",
 }: {
   metrics: TimeSeriesData[];
-    metricName: NumericFields;
+  metricName: NumericFields;
   unit?: string;
   lineColorStyle?: string;
 }) {

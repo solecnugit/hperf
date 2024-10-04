@@ -20,7 +20,7 @@ export default function BarplotCard({
   barColorStyle = "hsl(var(--chart-2))",
 }: {
   metrics: TimeSeriesData[];
-    metricName: string;
+  metricName: string;
   unit?: string;
   barColorStyle?: string;
 }) {

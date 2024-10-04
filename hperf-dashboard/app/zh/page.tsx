@@ -13,7 +13,11 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-import { NumericFields, streamingMetricsJSON, TimeSeriesData } from "@/api/metrics";
+import {
+  NumericFields,
+  streamingMetricsJSON,
+  TimeSeriesData,
+} from "@/api/metrics";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -68,12 +72,15 @@ import NewCardDialog from "../components/cards/dialog";
 
 import dynamic from "next/dynamic";
 
-const ReactGridLayout = dynamic(async () => {
-  const module = await import("react-grid-layout")
-  const m = module.default;
+const ReactGridLayout = dynamic(
+  async () => {
+    const module = await import("react-grid-layout");
+    const m = module.default;
 
-  return m.WidthProvider(m);
-}, { ssr: false });
+    return m.WidthProvider(m);
+  },
+  { ssr: false },
+);
 
 export default function Home() {
   const t = useTranslations("cards");
@@ -136,7 +143,7 @@ export default function Home() {
   );
 
   const onLayoutChange = (props: BaseCardLayout[]) => {
-    if (props.length == 0) return
+    if (props.length == 0) return;
 
     setCardLayouts(props);
   };
@@ -154,8 +161,8 @@ export default function Home() {
       setCardStorages((prev) => {
         return prev?.filter((card) => card.id !== id);
       });
-    }
-  }
+    };
+  };
 
   const cards = useMemo(() => {
     const factories = {
@@ -213,21 +220,31 @@ export default function Home() {
       // @ts-ignore
       const cardComponent = factories[card.type](card);
 
-      return <div key={card.id} onDoubleClick={
-        removeCard(card.id)
-      }>{cardComponent}</div>;
+      return (
+        <div key={card.id} onDoubleClick={removeCard(card.id)}>
+          {cardComponent}
+        </div>
+      );
     });
   }, [cardStorages, cardLayouts, metrics, cpuInfo]);
 
-  const createCard = ({ type, metricName }: { type: string; metricName: string }) => {
-    const randomId = ((new Date()).getTime() * Math.random() * 100000).toFixed(0);
+  const createCard = ({
+    type,
+    metricName,
+  }: {
+    type: string;
+    metricName: string;
+  }) => {
+    const randomId = (new Date().getTime() * Math.random() * 100000).toFixed(0);
     const cardType = type as CardType;
 
     const randomBrightColor = () => {
-      const seed = metricName.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const seed = metricName
+        .split("")
+        .reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const hue = seed % 360;
       return `hsl(${hue}, 70%, 50%)`;
-    }
+    };
 
     const newCard: PlotCardProps = {
       type: cardType,
@@ -237,7 +254,11 @@ export default function Home() {
     };
 
     const newCardLayout = {
-      x: 0, y: Infinity, i: randomId, h: 2, w: 2
+      x: 0,
+      y: Infinity,
+      i: randomId,
+      h: 2,
+      w: 2,
     } as BaseCardLayout;
 
     if (cardType == "lineplot") {
@@ -307,14 +328,14 @@ export default function Home() {
         return [newCard];
       }
     });
-  }
+  };
 
   return (
     <ContextMenu>
       <ContextMenuTrigger>
         <NewCardDialog
           onSubmit={(data) => {
-            createCard(data)
+            createCard(data);
             setNewCardDialogOpen(false);
           }}
           onCancel={() => {
@@ -340,11 +361,13 @@ export default function Home() {
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem>
-          <Button variant="outline" className="flex items-center" onClick={
-            () => {
+          <Button
+            variant="outline"
+            className="flex items-center"
+            onClick={() => {
               setNewCardDialogOpen(true);
-            }
-          }>
+            }}
+          >
             <Plus /> <span className="pl-1 text-sm">{t("new")}</span>
           </Button>
         </ContextMenuItem>
