@@ -3,4 +3,4 @@ TMP_DIR=%%HPERF_PERF_DIR
 perf_result="$TMP_DIR"/perf_result
 perf_error="$TMP_DIR"/perf_error
 date +%Y-%m-%d" "%H:%M:%S.%N | cut -b 1-23 > "$TMP_DIR"/perf_start_timestamp
-3>"$perf_result" perf stat -e %%HPERF_EVENT_GROUPS_STR -A -a -x "\t" -I 1000 --log-fd 3 %%HPERF_COMMAND 2>"$perf_error"
+3>"$perf_result" perf stat -e %%HPERF_EVENT_GROUPS_STR -A -a -x "\t" -I 1000 --interval-count %%HPERF_PERF_TIME --log-fd 3 2>"$perf_error"

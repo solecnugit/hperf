@@ -7,7 +7,7 @@ from shutil import copyfile
 from typing import Sequence, Union
 
 import logging
-from argparse import ArgumentParser, REMAINDER
+from argparse import ArgumentParser, REMAINDER, Namespace
 
 import subprocess
 
@@ -65,53 +65,19 @@ class CollectorParser:
                                  metavar="SECOND",
                                  type=int,
                                  default=10,
-                                 help="time of profiling")
+                                 help="time of profiling (default 10 seconds)")
 
-    def parse_args(self, argv: Sequence[str]) -> dict:
+    def parse_args(self, argv: Sequence[str]) -> Namespace:
         """
-        Parse and validate the options and arguments passed from command line and return an instance of `Connector`. 
+        Parse the command line options and return a Namespace. 
         
         :param `argv`: a list of arguments
-        :return: a dict of configurations for this run
+        :return: a Namespace of configurations for this run
         :raises:
             `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program 
             `ParserError`: if options and arguments are invalid 
         """
-        configs = {}
-
-        args = self.parser.parse_args(argv)
-        # Note: if `ArgumentParser` detect `-h`/`--help` option, 
-        # it will print help message and raise a `SystemExit` exception to exit the program.
-
-        # check `-V`/`--version` option
-        # if it is declared, print the version and exit
-        if args.version:
-            with open("./VERSION") as f:
-                print(f.read())
-            sys.exit(0)
-        
-        # step 0. check verbosity
-        if args.verbose:
-            configs["verbose"] = True
-
-        # step 1. workload command
-        # if command is empty, raise an exception and exit the program
-        if args.command:
-            configs["command"] = " ".join(args.command)
-        else:
-            raise Exception("Workload is not specified.")
-
-        # step 4. temporary directory
-        if args.tmp_dir:
-            configs["tmp_dir"] = args.tmp_dir
-            
-        # step 5. profiling time
-        if args.time:
-            configs["time"] = args.time
-
-        self.logger.debug(f"parsed configurations: {configs}")
-
-        return configs
+        return self.parser.parse_args(argv)
 
 
 class Connector:
@@ -131,7 +97,7 @@ class Connector:
     def run_script(self, script: str, file_name: str) -> int:
         """
         Create and run a script on SUT, then wait for the script finished. 
-        If the returned code is not equal to 0, it will generate a debug log message. 
+        If the returned code is not equal to 0, it will generate a error log message. 
         
         :param `script`: a string of shell script
         :param `file_name`: file name of the shell script generated in test directory
@@ -170,11 +136,16 @@ class Connector:
         :param `command_args`: a sequence of program arguments, e.g. `["ls", "/home"]`, or a string of command, e.g. `"ls /home"`
         :return: stdout output
         """
+        self.logger.debug(f"run command: {command_args}")
+        
         if isinstance(command_args, list):
             output = subprocess.Popen(command_args, stdout=subprocess.PIPE).communicate()[0]
         else:
             output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
         output = output.decode("utf-8")
+        
+        self.logger.debug(f"output: {output}")
+        
         return output
 
 
@@ -401,6 +372,10 @@ class Profiler:
         self.get_cpu_info()
         self.get_cpu_topo()
         
+        # write down isa and arch in the test directory
+        self.connector.run_command(f"echo {self.event_groups.isa} > {self.connector.test_dir}/isa")
+        self.connector.run_command(f"echo {self.event_groups.arch} > {self.connector.test_dir}/arch")
+        
         perf_script = self.__get_perf_script()
         sar_script = self.__get_sar_script()
 
@@ -408,18 +383,24 @@ class Profiler:
         
         abnormal_flag = False
         
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            perf_task = executor.submit(self.connector.run_script, perf_script, "perf.sh")
-            sar_task = executor.submit(self.connector.run_script, sar_script, "sar.sh")
-            
-            tasks = [perf_task, sar_task]
-            task_names = ["perf", "sar"]
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_to_task = {
+                executor.submit(self.connector.run_script, perf_script, "perf.sh"): "perf",
+                executor.submit(self.connector.run_script, sar_script, "sar.sh"): "sar",
+                executor.submit(self.connector.run_command, self.configs["command"]): "workload"
+            }
 
-            for task_id, future in enumerate(as_completed(tasks)):
-                ret_code = future.result()
-                if ret_code != 0:
-                    self.logger.error(f"Execution error: {task_names[task_id]}")
-                    abnormal_flag = True
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                try: 
+                    ret = future.result()
+                except Exception as e:
+                    self.logger.error(f"task {task} generated an exception: {e}")
+                else:
+                    self.logger.debug(f"task {task} returned: {ret}")
+                    if task != "workload" and ret != 0:
+                        self.logger.error(f"profiler error: {task}")
+                        abnormal_flag = True
         
         if abnormal_flag:
             raise Exception("Executing profiling script on the SUT failed.")
@@ -516,7 +497,8 @@ class Profiler:
         perf_parameters = {
             "HPERF_PERF_DIR": perf_dir,
             "HPERF_EVENT_GROUPS_STR": self.event_groups.get_event_groups_str(),
-            "HPERF_COMMAND": self.configs["command"]
+            # "HPERF_COMMAND": self.configs["command"]
+            "HPERF_PERF_TIME": self.configs["time"]
         }
         
         with open("./tools/perf_template", mode="r", encoding="utf-8") as f:
@@ -569,32 +551,42 @@ class Controller:
         :param `argv`: Options and arguments passed from command line when invoke `hperf`. 
         Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`). 
         """
-        self.__argv = argv    # (private) the original command line options and parameters
-
         self.configs = {}    # a dict contains parsed configurations for the following steps
-        self.parser = CollectorParser()
-
-        self.connector: Connector = None
-        self.profiler: Profiler = None
-        self.event_groups: EventGroup = None
-
-        # Initialize `Logger`
-        # **Note**: Since `Logger` follows singleton pattern,
+        
+        parser = CollectorParser()
+        argv_namespace: Namespace = parser.parse_args(argv)
+        
+        # validate the options and arguments
+        # Note: if `ArgumentParser` detect `-h`/`--help` option, 
+        # it will print the help message and raise a `SystemExit` exception to exit the program.
+        
+        # check `-V`/`--version` option
+        # if it is declared, print the version and exit
+        if argv_namespace.version:
+            with open("./VERSION") as f:
+                print(f.read())
+            sys.exit(0)
+        
+        # step 0. check verbosity and initialize `Logger`
+        # Note: Since `Logger` follows singleton pattern,
         # it is unnecessary to pass the reference of the instance of `Logger` to other classes through their constructor.
         # When we need to log records, use the method `logging.getLogger(<name>)` provided by module logging to get the instance of `Logger`,
         # where it will get the very same instance of `Logger` as long as the `<name>` is the same.
         self.logger: logging.Logger = logging.getLogger("hperf")
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
-
-        # Logs will output to both console and file
-        # [1] For console output of logs
+        # Logs will output to both console and file, log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
+        
+        # For console output of logs: > INFO (default), > DEBUG (if verbosity is declared)
         self.__handler_stream = logging.StreamHandler()
         self.__handler_stream.setFormatter(formatter)
-        self.__handler_stream.setLevel(logging.INFO)    # logs with level above INFO will be printed to console by default
+        if argv_namespace.verbose:
+            self.__handler_stream.setLevel(logging.DEBUG)
+        else:
+            self.__handler_stream.setLevel(logging.INFO)    # logs with level above INFO will be printed to console by default
         self.logger.addHandler(self.__handler_stream)
-
-        # [2] For file output of logs
+        
+        # For file output of logs: always > DEBUG, not affected by `-v` option
         self.log_file_path = "/tmp/hperf/hperf.log"
         try:
             os.makedirs("/tmp/hperf/", exist_ok=True)
@@ -606,6 +598,28 @@ class Controller:
         self.__handler_file.setFormatter(formatter)
         self.logger.addHandler(self.__handler_file)
 
+        # step 1. workload command
+        # if command is empty, raise an exception and exit the program
+        if argv_namespace.command:
+            self.configs["command"] = " ".join(argv_namespace.command)
+        else:
+            print("Workload is not specified.")
+            sys.exit(-1)
+
+        # step 2. temporary directory
+        if argv_namespace.tmp_dir:
+            self.configs["tmp_dir"] = argv_namespace.tmp_dir
+            
+        # step 3. profiling time
+        if argv_namespace.time:
+            self.configs["time"] = argv_namespace.time
+
+        self.logger.debug(f"parsed configurations: {self.configs}")
+
+        self.connector: Connector = None
+        self.profiler: Profiler = None
+        self.event_groups: EventGroup = None
+
         # SEE: `Controller.__prework()`
         self.tmp_dir: str = ""    # user-specified temporary directory for saving files for different runs
         self.test_id: str = ""    # a sub-directory in temporary directory for a single run
@@ -616,13 +630,8 @@ class Controller:
         Call this method to start profiling for workloads.
         """
         try:
-            # step 1.
-            self.__parse()    # may raise `SystemExit` or `ParserError`
-            # step 2.
             self.__prework()
-            # step 3.
             self.__profile()    # may raise `SystemExit`, `ConnectorError` or `ProfilerError`
-        # `Controller` is responsible for unified exceptional handling ... 
         except SystemExit as e:
             self.__system_exit_handler(e)
         except KeyboardInterrupt:
@@ -632,27 +641,6 @@ class Controller:
         finally: 
             if self.connector:
                 self.__save_log_file()
-
-    def __parse(self):
-        """
-        Parse and validate the original command line options and arguments (`.argv`) 
-        and then get the configuration dict (`.configs`). 
-        
-        If `-v`/`--verbose` option is declared, the threshold of log level will change. 
-        
-        :raises:
-            `SystemExit`: If `-V` and `-h` options is declared. In that case, hperf will print corresponding information and exit. 
-            `ParserError`: If options and arguments are invalid
-        """
-        # step 1.1. parse and validate the original command line options and arguments
-        self.configs = self.parser.parse_args(self.__argv)    # may raise `SystemExit` or `ParserError`
-
-        # step 1.2. if verbosity is declared (`-v` option), change the threshold of log level to print to console:
-        # log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
-        # for file: always > DEBUG, not affected by `-v` option
-        # for console: > INFO (default), > DEBUG (if verbosity is declared)
-        if "verbose" in self.configs:
-            self.__handler_stream.setLevel(logging.DEBUG)
 
     def __prework(self):
         """
@@ -669,10 +657,10 @@ class Controller:
         :raises:
             `ConnectorError`: For `RemoteConnector`, if fail to establish connection to remote SUT
         """
-        # step 2.1. create an unique test directory in the temporary directory
-        #   step 2.1.1 access or create the temporary directory specified by user
+        # create an unique test directory in the temporary directory
+        # - access or create the temporary directory specified by user
         selected_tmp_dir = self.configs["tmp_dir"]
-        #     [case 1] if the temporary directory exists, check the R/W permission
+        # [case 1] if the temporary directory exists, check the R/W permission
         if os.path.exists(selected_tmp_dir):
             if os.access(selected_tmp_dir, os.R_OK | os.W_OK):
                 self.tmp_dir = os.path.abspath(selected_tmp_dir)
@@ -684,7 +672,7 @@ class Controller:
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # **Note**: this action will change the value of `configs["tmp_dir"]`
                 self.tmp_dir = self.configs["tmp_dir"] = "/tmp/hperf/"
-        #     [case 2] if the temporary directory does not exist, try to create the directory
+        # [case 2] if the temporary directory does not exist, try to create the directory
         else:
             try:
                 os.makedirs(selected_tmp_dir)
@@ -698,14 +686,13 @@ class Controller:
                 # **Note**: this action will change the value of 'configs["tmp_dir"]'
                 self.tmp_dir = self.configs["tmp_dir"] = "/tmp/hperf/"
         
-        #   step 2.1.2. find a unique test id (`.__find_test_id()`) and create test directory
+        # find a unique test id (`.__find_test_id()`) and create test directory
         # search the temporary directory (`.tmp_dir`) and get a string with an unique test id, 
         # then create a sub-directory named by this string in the temporary directory for saving files and results.
         self.test_id = self.__find_test_id()
         os.makedirs(self.get_test_dir_path())
         self.logger.info(f"local test directory: {self.get_test_dir_path()}")
 
-        # step 2.2. instantiate a `Connector`
         self.connector = Connector(self.get_test_dir_path())
 
     def __find_test_id(self) -> str:
@@ -754,7 +741,7 @@ class Controller:
         self.event_groups = EventGroup(self.connector)
         self.profiler = Profiler(self.connector, self.configs, self.event_groups)
 
-        # step 3.1. sanity check
+        # step 1. sanity check
         # if sanity check does not pass, let user choose whether to continue profiling.
         if not self.profiler.sanity_check():
             select = input("Detected some problems which may interfere profiling. Continue profiling? [y|N] ")
@@ -768,7 +755,7 @@ class Controller:
         else:
             self.logger.info("sanity check passed.")
 
-        # step 3.2. profile
+        # step 2. profile
         self.profiler.profile()    # may raise `ProfilerError` or `ConnectorError` (for `RemoteConnector`)
         self.logger.info(f"raw data saved in {self.get_test_dir_path()}")
 
