@@ -122,7 +122,7 @@ export function RichLineplotCard({
   };
 
   return (
-    <Card className="w-full h-full px-4 pt-2 pb-0 select-none">
+    <Card className="w-full h-full px-4 pt-2 pb-0">
       <div className="drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all"></div>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>

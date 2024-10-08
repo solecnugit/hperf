@@ -32,6 +32,7 @@ export interface PlotCardProps extends BaseCardProps {
 export interface LineplotCardProps extends PlotCardProps {
   type: "lineplot";
   lineColorStyle: string;
+  valueFormatter?: "bandwidth";
 }
 
 export interface BarplotCardProps extends PlotCardProps {
@@ -42,6 +43,7 @@ export interface BarplotCardProps extends PlotCardProps {
 export interface RadialplotCardProps extends PlotCardProps {
   type: "radialplot";
   radialColorStyle: string;
+  valueFormatter?: "GHz";
 }
 
 export interface HperfCardProps extends BaseCardProps {

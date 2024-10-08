@@ -12,6 +12,7 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { BarChart, Bar, Rectangle, XAxis } from "recharts";
+import { autoFormat } from "./utils";
 
 export default function BarplotCard({
   metricName,
@@ -37,12 +38,16 @@ export default function BarplotCard({
     return metric[metricName] || 0.0;
   }, [metrics]);
 
+  const value = useMemo(() => {
+    return autoFormat(lastMetric);
+  }, [lastMetric]);
+
   const last5Metrics = useMemo(() => {
     return metrics.slice(-5);
   }, [metrics]);
 
   return (
-    <Card className="w-full h-full p-2 pt-2 select-none">
+    <Card className="w-full h-full p-2 pt-2">
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="px-4 pb-0 pt-2">
         <CardTitle>{t(metricName)}</CardTitle>
@@ -50,7 +55,7 @@ export default function BarplotCard({
       </CardHeader>
       <CardContent className="flex flex-row items-baseline gap-4 p-4 pt-2">
         <div className="flex items-baseline gap-2 text-3xl font-bold tabular-nums leading-none">
-          {lastMetric.toFixed(2)}
+          {value}
           <span className="text-sm font-normal text-muted-foreground">
             {unit}
           </span>

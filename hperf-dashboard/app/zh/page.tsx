@@ -113,11 +113,6 @@ export default function Home() {
     fetchCpuInfoJson().then(setCpuInfo);
   }, []);
 
-  const formatFrequency = (value: number) => {
-    // Convert from Hz to GHz
-    return (value / 1000000000).toFixed(2) + " GHz";
-  };
-
   const [cardStorages, setCardStorages] = useLocalStorage<CardProps[]>(
     "cardStorages",
     [
@@ -271,6 +266,16 @@ export default function Home() {
       newCard["unit"] = metricName == "cpuUtilization" ? "%" : "";
     }
 
+    if (
+      cardType == "lineplot" &&
+      ["memBandwidthRd", "memBandwidthWr", "memBandwidth"].indexOf(
+        metricName,
+      ) != -1
+    ) {
+      // @ts-ignore
+      newCard["valueFormatter"] = "bandwidth";
+    }
+
     if (cardType == "barplot") {
       // @ts-ignore
       newCard["barColorStyle"] = randomBrightColor();
@@ -291,7 +296,7 @@ export default function Home() {
 
     if (cardType == "radialplot" && metricName == "frequency") {
       // @ts-ignore
-      newCard["valueFormatter"] = formatFrequency;
+      newCard["valueFormatter"] = "GHz";
     }
 
     if (cardType == "cpuInfo") {
@@ -307,7 +312,7 @@ export default function Home() {
       newCardLayout.w = 12;
       newCardLayout.h = 6;
       newCardLayout.minH = 6;
-      newCardLayout.minW = 12;
+      newCardLayout.minW = 8;
       // @ts-ignore
       newCard["tableExpanded"] = false;
     }

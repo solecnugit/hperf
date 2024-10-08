@@ -18,6 +18,7 @@ import {
   PolarRadiusAxis,
   Label,
 } from "recharts";
+import { formatGHz, autoFormat } from "./utils";
 
 export default function RadialPlotCard({
   metricName,
@@ -30,7 +31,7 @@ export default function RadialPlotCard({
   metricName: string;
   radialColorStyle?: string;
   maxValue?: number;
-  valueFormatter?: (value: number) => string;
+  valueFormatter?: "GHz";
 }) {
   const t = useTranslations("cards");
 
@@ -57,8 +58,16 @@ export default function RadialPlotCard({
     return (lastMetric / maxValue) * 360;
   }, [lastMetric, maxValue]);
 
+  const value = useMemo(() => {
+    if (valueFormatter && valueFormatter === "GHz") {
+      return formatGHz(lastMetric);
+    }
+
+    return autoFormat(lastMetric);
+  }, [lastMetric]);
+
   return (
-    <Card className="w-full h-full px-2 pt-2 select-none">
+    <Card className="w-full h-full px-2 pt-2 ">
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="drag-handle px-2 pt-2 pb-0">
         <CardTitle>{t(metricName)}</CardTitle>
@@ -110,9 +119,7 @@ export default function RadialPlotCard({
                           y={viewBox.cy}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {valueFormatter
-                            ? valueFormatter(lastMetric)
-                            : lastMetric}
+                          {value}
                         </tspan>
                         <tspan
                           x={viewBox.cx}

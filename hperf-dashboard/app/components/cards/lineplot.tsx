@@ -17,17 +17,20 @@ import {
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { LineChart, CartesianGrid, YAxis, XAxis, Line } from "recharts";
+import { formatBandwidth, autoFormat } from "./utils";
 
 export default function LinePlotCard({
   metricName,
   unit = "",
   metrics,
   lineColorStyle = "hsl(var(--chart-1))",
+  valueFormatter,
 }: {
   metrics: TimeSeriesData[];
   metricName: NumericFields;
   unit?: string;
   lineColorStyle?: string;
+  valueFormatter?: "bandwidth";
 }) {
   const t = useTranslations("cards");
   const mt = useTranslations("metrics");
@@ -37,7 +40,13 @@ export default function LinePlotCard({
       return 0.0;
     }
 
-    return computeOne(metrics, "average", metricName);
+    const value = computeOne(metrics, "average", metricName);
+
+    if (valueFormatter && valueFormatter === "bandwidth") {
+      return formatBandwidth(value);
+    }
+
+    return autoFormat(value);
   }, [metrics]);
 
   const maxValue = useMemo(() => {
@@ -45,17 +54,23 @@ export default function LinePlotCard({
       return 0.0;
     }
 
-    return computeOne(metrics, "max", metricName);
+    const value = computeOne(metrics, "max", metricName);
+
+    if (valueFormatter && valueFormatter === "bandwidth") {
+      return formatBandwidth(value);
+    }
+
+    return autoFormat(value);
   }, [metrics]);
 
   return (
-    <Card className="flex flex-col w-full h-full px-2 pt-2 select-none">
+    <Card className="flex flex-col w-full h-full px-2 pt-2">
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="drag-handle flex flex-row items-center gap-4 space-y-0 py-2 [&>div]:flex-1">
         <div>
           <CardDescription>{t("average") + mt(metricName)}</CardDescription>
           <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums">
-            {avgValue.toFixed(2)}
+            {avgValue}
             <span className="text-sm font-normal tracking-normal text-muted-foreground">
               {unit}
             </span>
@@ -64,7 +79,7 @@ export default function LinePlotCard({
         <div>
           <CardDescription>{t("max") + mt(metricName)}</CardDescription>
           <CardTitle className="flex items-baseline gap-1 text-4xl tabular-nums">
-            {maxValue.toFixed(2)}
+            {maxValue}
             <span className="text-sm font-normal tracking-normal text-muted-foreground">
               {unit}
             </span>

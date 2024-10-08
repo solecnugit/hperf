@@ -85,7 +85,7 @@ export default function CpuInfoCard({
   const t = useTranslations("cpuInfo");
 
   return (
-    <Card className="w-full h-full px-2 pt-2 select-none">
+    <Card className="w-full h-full px-2 pt-2">
       <div className="px-4 drag-handle w-full h-[6px] bg-primary rounded-md opacity-0 hover:opacity-5 transition-all "></div>
       <CardHeader className="pt-2 pb-2">
         <CardTitle>{t("cpuInfo")}</CardTitle>
