@@ -225,11 +225,15 @@ class Analyzer:
         self.test_dir = test_dir
         
         analysis_dir = os.path.join(test_dir, "analysis_results")
-        try:
-            os.makedirs(analysis_dir)
-        except:
-            self.logger.error("fail to create the directory for the analysis results")
-            sys.exit(-1)
+        if os.path.exists(analysis_dir):
+            self.logger.info(f"directory {analysis_dir} already exists.")
+        else:
+            try:
+                os.makedirs(analysis_dir)
+            except Exception as e:
+                self.logger.error(f"fail to create the directory {analysis_dir} for the analysis results. Error: {e}")
+                sys.exit(-1)
+        
         self.analysis_dir = analysis_dir
         
         self.configs = configs
