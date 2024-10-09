@@ -8,7 +8,7 @@ export default function HperfCard() {
     <Card className="flex flex-col items-center justify-center w-full h-full p-4">
       <CardHeader className="p-4 drag-handle">
         <CardTitle className="text-2xl uppercase tracking-tight">
-          Hperf
+          Hperf Visualizer
         </CardTitle>
       </CardHeader>
     </Card>

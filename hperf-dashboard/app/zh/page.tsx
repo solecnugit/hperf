@@ -65,6 +65,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import NewCardDialog from "../components/cards/dialog";
+import { getColorFrom } from "../components/cards/utils";
 
 // import RGL, { WidthProvider } from "react-grid-layout";
 
@@ -233,14 +234,6 @@ export default function Home() {
     const randomId = (new Date().getTime() * Math.random() * 100000).toFixed(0);
     const cardType = type as CardType;
 
-    const randomBrightColor = () => {
-      const seed = metricName
-        .split("")
-        .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const hue = seed % 360;
-      return `hsl(${hue}, 70%, 50%)`;
-    };
-
     const newCard: PlotCardProps = {
       type: cardType,
       metricName: metricName as NumericFields,
@@ -258,7 +251,7 @@ export default function Home() {
 
     if (cardType == "lineplot") {
       // @ts-ignore
-      newCard["lineColorStyle"] = randomBrightColor();
+      newCard["lineColorStyle"] = getColorFrom(metricName);
       newCardLayout.h = 3;
       newCardLayout.w = 4;
       newCardLayout.minH = 3;
@@ -278,7 +271,7 @@ export default function Home() {
 
     if (cardType == "barplot") {
       // @ts-ignore
-      newCard["barColorStyle"] = randomBrightColor();
+      newCard["barColorStyle"] = getColorFrom(metricName);
       newCardLayout.h = 2;
       newCardLayout.w = 3;
       newCardLayout.minH = 2;
@@ -287,7 +280,7 @@ export default function Home() {
 
     if (cardType == "radialplot") {
       // @ts-ignore
-      newCard["radialColorStyle"] = randomBrightColor();
+      newCard["radialColorStyle"] = getColorFrom(metricName);
       newCardLayout.h = 4;
       newCardLayout.w = 3;
       newCardLayout.minH = 4;

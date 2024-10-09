@@ -143,6 +143,8 @@ function parseMetrics(rawData: string): TimeSeriesData[] {
       }
 
       obj.cpuUtilization *= 100;
+      // ns to ms
+      obj.wallClockTime /= 1e6;
 
       return obj;
     })

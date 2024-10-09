@@ -1,4 +1,5 @@
 import { NumericFields, numericFields } from "@/api/metrics";
+import { getColorFrom } from "./utils";
 
 export interface BaseCardLayout {
   i: string;
@@ -72,32 +73,24 @@ export type CardProps =
   | CpuInfoCardProps
   | RichLineplotCardsProps;
 
-const randomBrightColor = (metricName: string) => {
-  const seed = metricName
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const hue = seed % 360;
-  return `hsl(${hue}, 70%, 50%)`;
-};
-
 export const availableCards = {
   lineplot: numericFields.map((metricName) => ({
     type: "lineplot",
     metricName,
     unit: metricName == "cpuUtilization" ? "%" : "",
-    lineColorStyle: randomBrightColor(metricName),
+    lineColorStyle: getColorFrom(metricName),
     layout: { i: metricName, x: 0, y: 0, w: 3, h: 5 },
   })),
   barplot: numericFields.map((metricName) => ({
     type: "barplot",
     metricName,
-    barColorStyle: randomBrightColor(metricName),
+    barColorStyle: getColorFrom(metricName),
     layout: { i: metricName, x: 0, y: 0, w: 3, h: 4 },
   })),
   radialplot: numericFields.map((metricName) => ({
     type: "radialplot",
     metricName,
-    radialColorStyle: randomBrightColor(metricName),
+    radialColorStyle: getColorFrom(metricName),
     layout: { i: metricName, x: 0, y: 0, w: 1, h: 1 },
   })),
   cpuInfo: cpuInfoTypes.map((infoType) => ({
