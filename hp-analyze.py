@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from event_group import EventGroup
 import os
 import sys
 import logging
@@ -15,13 +14,13 @@ class AnalyzerParser:
     """
     `AnalyzerParser` is responsible for parsing and validating options and arguments passed from command line for 'hp-analyze'.
     """
-    
+
     def __init__(self) -> None:
         """
         Constructor
         """
         self.logger = logging.getLogger("hp-analyze")
-        
+
         # initialize `ArgumentParser`
         self.parser = ArgumentParser(prog="python hp-analyze.py",
                                      description="a data analyzer to process raw performance data")
@@ -32,17 +31,17 @@ class AnalyzerParser:
                                  metavar="TEST_DIR_PATH",
                                  type=str,
                                  help="test directory which stores the profiling raw data (can be found from the output of hp-collect)")
-        
+
         #   [-V/--version]
         self.parser.add_argument("-V", "--version",
                                  action="store_true",
                                  help="show the version and exit")
-        
+
         #   [-v/--verbose]
         self.parser.add_argument("-v", "--verbose",
                                  action="store_true",
                                  help="increase output verbosity")
-        
+
         #   [--cpu CPU]
         # hperf will conduct a system-wide profiling so that the list will not affect performance data collection
         # but will affect the aggregation of raw performance data.
@@ -52,19 +51,19 @@ class AnalyzerParser:
                                  type=str,
                                  default="all",
                                  help="specify the scope of performance data aggregation by passing a list of cpu ids.")
-        
-    def parse_args(self, argv: Sequence[str]) -> Namespace: 
+
+    def parse_args(self, argv: Sequence[str]) -> Namespace:
         """
-        Parse the command line options and return a Namespace. 
-        
+        Parse the command line options and return a Namespace.
+
         :param `argv`: a list of arguments
         :return: a Namespace of configurations for this run
         :raises:
-            `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program 
-            `ParserError`: if options and arguments are invalid 
+            `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program
+            `ParserError`: if options and arguments are invalid
         """
         argv_namespace: Namespace = self.parser.parse_args(argv)
-        
+
         if argv_namespace.cpu != "all":
             try:
                 cpus: list = self.__parse_cpu_list(argv_namespace.cpu)
@@ -72,13 +71,13 @@ class AnalyzerParser:
             except Exception as e:
                 print(e)
                 sys.exit(-1)
-        
+
         return argv_namespace
-        
+
     def __parse_cpu_list(self, cpu_list: str) -> list:
         """
-        Parse the string of cpu list with comma (`,`) and hyphen (`-`), and get the list of cpu ids. 
-        
+        Parse the string of cpu list with comma (`,`) and hyphen (`-`), and get the list of cpu ids.
+
         e.g. if `cpu_list = '2,4-8'`, the method will return `[2, 4, 5, 6, 7, 8]`
         :param `cpu_list`: a string of cpu list
         :return: a list of cpu ids (the elements are non-negative and non-repetitive)
@@ -117,8 +116,8 @@ class Connector:
 
     def __init__(self, test_dir: str) -> None:
         """
-        Constructor of `LocalConnector`. 
-        
+        Constructor of `LocalConnector`.
+
         :param `test_dir`: path of the test directory for this run, which can be obtained by `Controller.get_test_dir_path()`
         """
         self.logger = logging.getLogger("hp-analyze")
@@ -126,9 +125,9 @@ class Connector:
 
     def run_script(self, script: str, file_name: str) -> int:
         """
-        Create and run a script on SUT, then wait for the script finished. 
-        If the returned code is not equal to 0, it will generate a error log message. 
-        
+        Create and run a script on SUT, then wait for the script finished.
+        If the returned code is not equal to 0, it will generate a error log message.
+
         :param `script`: a string of shell script
         :param `file_name`: file name of the shell script generated in test directory
         :return: the returned code of executing the shell script
@@ -145,8 +144,8 @@ class Connector:
 
     def __generate_script(self, script: str, file_name: str) -> str:
         """
-        Generate a profiling script on SUT. 
-        
+        Generate a profiling script on SUT.
+
         :param `script`: a string of shell script
         :param `file_name`: file name of the shell script generated in test directory
         :return: path of the script on the SUT
@@ -159,43 +158,43 @@ class Connector:
 
     def run_command(self, command_args: Union[Sequence[str], str]) -> str:
         """
-        Run a command on SUT, then return the stdout output of executing the command. 
-        
-        **Note**: The output is decoded by 'utf-8'. 
-        
+        Run a command on SUT, then return the stdout output of executing the command.
+
+        **Note**: The output is decoded by 'utf-8'.
+
         :param `command_args`: a sequence of program arguments, e.g. `["ls", "/home"]`, or a string of command, e.g. `"ls /home"`
         :return: stdout output
         """
         self.logger.debug(f"run command: {command_args}")
-        
+
         if isinstance(command_args, list):
             output = subprocess.Popen(command_args, stdout=subprocess.PIPE).communicate()[0]
         else:
             output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
         output = output.decode("utf-8")
-        
+
         self.logger.debug(f"output: {output}")
-        
+
         return output
-    
+
 
 class EventGroup:
     """
-    'EventGroup' is responsible for detecting the architecture of the SUT 
+    'EventGroup' is responsible for detecting the architecture of the SUT
     and generating the string of event groups, which can be accepted by '-e' options of 'perf'.
     """
     def __init__(self, isa: str, arch: str) -> None:
         """
         Constructor of 'EventGroup'.
-        It will firstly determine the architecture of the SUT through 'Connector', 
+        It will firstly determine the architecture of the SUT through 'Connector',
         then it will dynamic import the pre-defined configurations in 'profiler/arch/<arch_name>.py'.
-        
-        :param isa: 
-        :param arch: 
+
+        :param isa:
+        :param arch:
         """
         self.isa = isa
         self.arch = arch
-        
+
         # dynamic import event configurations based on the architecture of the SUT
         arch_module = __import__(f"arch.{self.arch}", fromlist=[0])
         self.events: list = getattr(arch_module, "events")
@@ -209,21 +208,21 @@ class EventGroup:
 
 class Analyzer:
     """
-    `Analyzer` is responsible for handling the raw performance data generated by `Profiler` and output the report of performance metrics. 
+    `Analyzer` is responsible for handling the raw performance data generated by `Profiler` and output the report of performance metrics.
     """
 
     def __init__(self, test_dir: str, configs: dict, event_groups: EventGroup) -> None:
         """
         Constructor of `Analyzer`
-        :param `test_dir_path`: a string of the path of test directory, 
+        :param `test_dir_path`: a string of the path of test directory,
         which can be obtained by `Connector.get_test_dir_path()`
         :param `configs`: a dict of parsed configurations (the member `configs` in `Controller`)
         :param `event_group`: an instance of `EventGroup`
         """
         self.logger = logging.getLogger("hp-analyze")
-        
+
         self.test_dir = test_dir
-        
+
         analysis_dir = os.path.join(test_dir, "analysis_results")
         if os.path.exists(analysis_dir):
             self.logger.info(f"directory {analysis_dir} already exists.")
@@ -233,17 +232,17 @@ class Analyzer:
             except Exception as e:
                 self.logger.error(f"fail to create the directory {analysis_dir} for the analysis results. Error: {e}")
                 sys.exit(-1)
-        
+
         self.analysis_dir = analysis_dir
-        
+
         self.configs = configs
         self.event_groups = event_groups
 
         self.cpu_topo: pd.DataFrame = None    # for cpu topo (mapping of cpu id and socket id)
-        
+
         self.hw_timeseries: pd.DataFrame = None    # for perf timeseries result
         self.sw_timeseries: pd.DataFrame = None    # for sar timeseries result
-        
+
         self.aggregated_metrics: pd.DataFrame = None    # for aggregated results, hw event counts, metrics, sw avg. util.
 
     def __analyze_cpu_topo(self):
@@ -256,22 +255,22 @@ class Analyzer:
                                     usecols=[0, 1])
 
     def analyze(self):
-        """
-        
-        """
+        """ """
         self.__analyze_cpu_topo()
 
         # read the raw performance data file generated by `Profiler` and convert to DataFrame
-        perf_raw_data = pd.read_csv(os.path.join(self.test_dir, "perf_result"),
-                                    sep="\t",
-                                    header=None, 
-                                    names=["timestamp", "unit", "value", "metric"], 
-                                    usecols=[0, 1, 2, 4])
+        perf_raw_data = pd.read_csv(
+            os.path.join(self.test_dir, "perf_result"),
+            sep="\t",
+            header=None,
+            names=["timestamp", "unit", "value", "metric"],
+            usecols=[0, 1, 2, 4],
+        )
         sar_u_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_u"), header=0)    # CPU util. ["%user", "%system"]
         sar_r_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_r"), header=0)    # mem. util. ["%memused"]
         sar_n_dev_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_n_dev"), header=0)    # network util ["%ifutil"]
         sar_d_raw_data = pd.read_csv(os.path.join(self.test_dir, "sar_d"), header=0)    # storage util. ["%util"]
-        
+
         # ------------ for perf data --------------
         # rename 'unit' according to self.event_groups.events[..]['type']
         # e.g. 'duration_time' is a system-wide event, where in each timestamp there is only a value (attribute to CPU0)
@@ -293,7 +292,7 @@ class Analyzer:
                     perf_raw_data.loc[perf_raw_data.metric == item["perf_name"], ["unit"]] = "SYSTEM"
                     system_event_flag = True
                 elif item["type"] == "SOCKET":
-                    # TODO: for some socket-wide events, such as events from SLC shared by a socket, perf will report its value 
+                    # TODO: for some socket-wide events, such as events from SLC shared by a socket, perf will report its value
                     # attributed to a CPU in this socket.
                     # e.g. SOCKET 0: CPU 0-15, 32-47 ... SOCKET 1: CPU 16-31, 48-63 ...
                     # timestamp | unit  | value | metric
@@ -301,7 +300,7 @@ class Analyzer:
                     # 1.0000    | CPU16 | 23456 | uncore_cha_xxx    // CPU16 -> SOCKET 1
                     # 1.0000    | CPU0  | 23456 | cycles
                     # 1.0000    | CPU1  | 34567 | cycles
-                    # ... 
+                    # ...
                     # -------------- faulty --------------
                     perf_raw_data.loc[perf_raw_data.metric == item["perf_name"], ["unit"]] \
                         = perf_raw_data.loc[perf_raw_data.metric == item["perf_name"], ["unit"]].apply(cpu2socket, axis=1)
@@ -332,7 +331,7 @@ class Analyzer:
             ).reset_index()
 
         # rename event names used in perf by the generic event names defined by hperf
-        # e.g. 
+        # e.g.
         # timestamp | value | metric -> timestamp | value | metric
         # 1.0000    | 98765 | r08d1     1.0000    | 98765 | L1 CACHE MISSES
         # 1.0000    | 87654 | r10d1     1.0000    | 87654 | L2 CACHE MISSES
@@ -355,21 +354,21 @@ class Analyzer:
         for t in timestamps:
             metric_results = {}
             metric_results["timestamp"] = t    # col. 0
-            
+
             mapping_id_to_value = {}
             for item in self.event_groups.events:
                 val = scoped_raw_data.query(f'metric=="{item["name"]}" & timestamp=={t}')["value"].iloc[0]
                 metric_results[item["name"]] = val    # col. event count
                 mapping_id_to_value[f"e{item['id']}"] = val
-                
+
             for item in self.event_groups.metrics:
                 val = eval(item["expression"], mapping_id_to_value)
                 metric_results[item["metric"]] = val    # col. metric result
-            
+
             perf_timeseries = pd.concat([perf_timeseries, pd.DataFrame(metric_results, index=[0])], ignore_index=True)
-        
+
         self.hw_timeseries = perf_timeseries
-        
+
         # ------------ for sar data --------------
         sar_u_timeseries = sar_u_raw_data[["timestamp", r"%user", r"%system"]].groupby(["timestamp"]).agg(
             CPU_UTIL_USER=(r"%user", np.average),
@@ -384,8 +383,16 @@ class Analyzer:
         sar_d_timeseries = sar_d_raw_data[["timestamp", r"%util"]].groupby(["timestamp"]).agg(
             STORAGE_UTIL=(r"%util", np.average)
         ).reset_index().drop("timestamp", axis=1)
-        
-        self.sw_timeseries = pd.concat([sar_u_timeseries, sar_r_timeseries, sar_n_dev_timeseries, sar_d_timeseries], axis=1)        
+
+        self.sw_timeseries = pd.concat(
+            [
+                sar_u_timeseries,
+                sar_r_timeseries,
+                sar_n_dev_timeseries,
+                sar_d_timeseries,
+            ],
+            axis=1,
+        )
 
     def get_timeseries(self, to_csv: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -394,11 +401,11 @@ class Analyzer:
             hw_timeseries_path = os.path.join(self.analysis_dir, "hw_timeseries.csv")
             self.hw_timeseries.to_csv(hw_timeseries_path, header=True)
             self.logger.info(f"save timeseries DataFrame to CSV file: {hw_timeseries_path}")
-            
+
             sw_timeseries_path = os.path.join(self.analysis_dir, "sw_timeseries.csv")
             self.sw_timeseries.to_csv(sw_timeseries_path, header=True)
             self.logger.info(f"save timeseries DataFrame to CSV file: {sw_timeseries_path}")
-        
+
         return self.hw_timeseries, self.sw_timeseries
 
     def get_timeseries_plot(self):
@@ -406,23 +413,27 @@ class Analyzer:
         """
         perf_metrics = [ item["metric"] for item in self.event_groups.metrics ]
         sar_metrics = ["CPU_UTIL_USER", "CPU_UTIL_SYS", "MEM_UTIL", "NET_UTIL", "STORAGE_UTIL"]
-        
-        axes = self.hw_timeseries.plot(x="timestamp", 
-                                       y=perf_metrics,
-                                       subplots=True,
-                                       figsize=(10, 2 * len(perf_metrics)))
+
+        axes = self.hw_timeseries.plot(
+            x="timestamp",
+            y=perf_metrics,
+            subplots=True,
+            figsize=(10, 2 * len(perf_metrics)),
+        )
         fig = axes[0].get_figure()
-        
+
         hw_timeseries_plot_path = os.path.join(self.analysis_dir, "hw_timeseries.png")
         fig.savefig(hw_timeseries_plot_path)
         self.logger.info(f"timeseries figure saved in: {hw_timeseries_plot_path}")
-        
-        axes = self.sw_timeseries.plot(x="timestamp", 
-                                       y=sar_metrics,
-                                       subplots=True,
-                                       figsize=(10, 2 * len(sar_metrics)))
+
+        axes = self.sw_timeseries.plot(
+            x="timestamp",
+            y=sar_metrics,
+            subplots=True,
+            figsize=(10, 2 * len(sar_metrics)),
+        )
         fig = axes[0].get_figure()
-        
+
         sw_timeseries_plot_path = os.path.join(self.analysis_dir, "sw_timeseries.png")
         fig.savefig(sw_timeseries_plot_path)
         self.logger.info(f"timeseries figure saved in: {sw_timeseries_plot_path}")
@@ -430,9 +441,9 @@ class Analyzer:
     def get_aggregated_metrics(self, to_csv: bool = False) -> pd.DataFrame:
         """
         """
-        # use timeseries to get aggregated metrics.  
+        # use timeseries to get aggregated metrics.
         # Hardware metrics
-        # for events, get the sum of values in different timestamps; for metrics, get the average of values in different timestamps. 
+        # for events, get the sum of values in different timestamps; for metrics, get the average of values in different timestamps.
         metric_results = {}
         for item in self.event_groups.events:
             sum = self.hw_timeseries[item["name"]].sum()
@@ -440,7 +451,7 @@ class Analyzer:
         for item in self.event_groups.metrics:
             avg = self.hw_timeseries[item["metric"]].mean()
             metric_results[item["metric"]] = avg
-            
+
         # Software metrics
         for col_index, (col, series) in enumerate(self.sw_timeseries.items()):
             if col_index != 0:
@@ -465,18 +476,18 @@ refer to README.md for supported options
 if __name__ == "__main__":
     parser = AnalyzerParser()
     argv_namespace = parser.parse_args(sys.argv[1:])
-    # Note: if `ArgumentParser` detect `-h`/`--help` option, 
+    # Note: if `ArgumentParser` detect `-h`/`--help` option,
     # it will print help message and raise a `SystemExit` exception to exit the program.
-    
+
     # validate the options and arguments
-    
+
     # check `-V`/`--version` option
     # if it is declared, print the version and exit
     if argv_namespace.version:
         with open("./VERSION") as f:
             print(f.read())
         sys.exit(0)
-    
+
     # step 0. check verbosity and initialize `Logger`
     # Note: Since `Logger` follows singleton pattern,
     # it is unnecessary to pass the reference of the instance of `Logger` to other classes through their constructor.
@@ -492,7 +503,7 @@ if __name__ == "__main__":
     else:
         __handler_stream.setLevel(logging.INFO)
     logger.addHandler(__handler_stream)
-    
+
     # step 1. check the test directory
     try:
         if argv_namespace.test_dir:
@@ -510,25 +521,25 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(e)
         sys.exit(-1)
-    
+
     logger.info(f"test directory specified: {argv_namespace.test_dir}")
-    
+
     # step 2. get the event group
     with open(os.path.join(argv_namespace.test_dir, "isa"), 'r') as f:
         isa = f.read().strip()
     with open(os.path.join(argv_namespace.test_dir, "arch"), 'r') as f:
         arch = f.read().strip()
-    
+
     logger.info(f"SUT information: {isa}, {arch}")
-    
+
     event_groups = EventGroup(isa, arch)
-    
+
     analyzer = Analyzer(test_dir=argv_namespace.test_dir,
                         configs={"cpu_list": argv_namespace.cpu},
                         event_groups=event_groups)
-    
+
     analyzer.analyze()
-    
+
     hw_timeseries, sw_timeseries = analyzer.get_timeseries(to_csv=True)
     print(hw_timeseries)
     print(sw_timeseries)

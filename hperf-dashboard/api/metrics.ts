@@ -101,7 +101,7 @@ export const numericFields = Object.values(csvToJsMapping).filter(
 ) as NumericFields[];
 
 export async function fetchMetricsCSV(): Promise<string> {
-  const res = await fetch("/timeseries.csv");
+  const res = await fetch("/data.csv");
   return await res.text();
 }
 

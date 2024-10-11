@@ -17,8 +17,8 @@ from string import Template
 
 class CollectorParser:
     """
-    `CollectorParser` is responsible for parsing and validating options and arguments passed from command line. 
-    It will create a dict containing all configurations may used by other modules such as `Connector`, `Profiler` and `Analyzer`, etc. 
+    `CollectorParser` is responsible for parsing and validating options and arguments passed from command line.
+    It will create a dict containing all configurations may used by other modules such as `Connector`, `Profiler` and `Analyzer`, etc.
     """
 
     def __init__(self) -> None:
@@ -58,7 +58,7 @@ class CollectorParser:
                                  help="increase output verbosity")
         #   [--time SECOND]
         # TODO: this option is currently used for profiling by sar, because sar needs to specify the time of profiling.
-        # the profiling time of sar should equal to the time of workload running, 
+        # the profiling time of sar should equal to the time of workload running,
         # however, we are unable to know the time of workload running in advance.
         # so this option is a workaround. users should set this value to the estimated workload running time.
         self.parser.add_argument("-t", "--time",
@@ -69,13 +69,13 @@ class CollectorParser:
 
     def parse_args(self, argv: Sequence[str]) -> Namespace:
         """
-        Parse the command line options and return a Namespace. 
-        
+        Parse the command line options and return a Namespace.
+
         :param `argv`: a list of arguments
         :return: a Namespace of configurations for this run
         :raises:
-            `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program 
-            `ParserError`: if options and arguments are invalid 
+            `SystemExit`: for `-V` and `-h` options, it will print corresponding information and exit program
+            `ParserError`: if options and arguments are invalid
         """
         return self.parser.parse_args(argv)
 
@@ -87,8 +87,8 @@ class Connector:
 
     def __init__(self, test_dir: str) -> None:
         """
-        Constructor of `LocalConnector`. 
-        
+        Constructor of `LocalConnector`.
+
         :param `test_dir`: path of the test directory for this run, which can be obtained by `Controller.get_test_dir_path()`
         """
         self.logger = logging.getLogger("hperf")
@@ -96,9 +96,9 @@ class Connector:
 
     def run_script(self, script: str, file_name: str) -> int:
         """
-        Create and run a script on SUT, then wait for the script finished. 
-        If the returned code is not equal to 0, it will generate a error log message. 
-        
+        Create and run a script on SUT, then wait for the script finished.
+        If the returned code is not equal to 0, it will generate a error log message.
+
         :param `script`: a string of shell script
         :param `file_name`: file name of the shell script generated in test directory
         :return: the returned code of executing the shell script
@@ -115,8 +115,8 @@ class Connector:
 
     def __generate_script(self, script: str, file_name: str) -> str:
         """
-        Generate a profiling script on SUT. 
-        
+        Generate a profiling script on SUT.
+
         :param `script`: a string of shell script
         :param `file_name`: file name of the shell script generated in test directory
         :return: path of the script on the SUT
@@ -129,45 +129,45 @@ class Connector:
 
     def run_command(self, command_args: Union[Sequence[str], str]) -> str:
         """
-        Run a command on SUT, then return the stdout output of executing the command. 
-        
-        **Note**: The output is decoded by 'utf-8'. 
-        
+        Run a command on SUT, then return the stdout output of executing the command.
+
+        **Note**: The output is decoded by 'utf-8'.
+
         :param `command_args`: a sequence of program arguments, e.g. `["ls", "/home"]`, or a string of command, e.g. `"ls /home"`
         :return: stdout output
         """
         self.logger.debug(f"run command: {command_args}")
-        
+
         if isinstance(command_args, list):
             output = subprocess.Popen(command_args, stdout=subprocess.PIPE).communicate()[0]
         else:
             output = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE).communicate()[0]
         output = output.decode("utf-8")
-        
+
         self.logger.debug(f"output: {output}")
-        
+
         return output
 
 
 class EventGroup:
     """
-    'EventGroup' is responsible for detecting the architecture of the SUT 
+    'EventGroup' is responsible for detecting the architecture of the SUT
     and generating the string of event groups, which can be accepted by '-e' options of 'perf'.
     """
     def __init__(self, connector: Connector = None) -> None:
         """
         Constructor of 'EventGroup'.
-        It will firstly determine the architecture of the SUT through 'Connector', 
+        It will firstly determine the architecture of the SUT through 'Connector',
         then it will dynamic import the pre-defined configurations in 'profiler/arch/<arch_name>.py'.
         :param connector: an instance of 'Connector' ('LocalConnector' or 'RemoteConnector')
         """
         self.logger = logging.getLogger("hperf")
-        
+
         if connector:
             self.connector = connector
-            
+
             self.isa = self.__get_isa()
-            
+
             self.arch = self.__get_architecture()
 
             # dynamic import event configurations based on the architecture of the SUT
@@ -216,12 +216,12 @@ class EventGroup:
 
         for event_group in self.event_groups:
             filtered_event_group = set()
-            for event in event_group: 
+            for event in event_group:
                 if event not in not_multiplexing_events:
                     filtered_event_group.add(event)
             if len(filtered_event_group) != 0:
                 filtered_event_groups.append(filtered_event_group)
-        
+
         while True:
             if len(filtered_event_groups) <= 1:
                 break
@@ -247,16 +247,16 @@ class EventGroup:
 
             # Merge G_i and G_j
             g_merged = g_j.union(g_i)
-            
+
             if len(g_merged) <= self.available_GP:
                 filtered_event_groups.insert(0, g_merged)
             else:
                 filtered_event_groups.insert(g_j_index, g_j)
                 filtered_event_groups.insert(g_i_index, g_i)
                 break
-        
+
         self.event_groups = filtered_event_groups
-    
+
     def __get_isa(self) -> str:
         """
         Determine the Instruction Set Architecture (ISA) of the SUT by analyzing the output of 'lscpu' command.
@@ -265,7 +265,7 @@ class EventGroup:
         isa = self.connector.run_command("lscpu | grep 'Architecture:' | awk -F: '{print $2}'").strip()
         self.logger.debug(f"ISA: {isa}")
         return isa
-    
+
     def __get_architecture(self) -> str:
         """
         Determine the architecture of the SUT by analyzing the output of 'lscpu' command.
@@ -276,7 +276,7 @@ class EventGroup:
         # TODO: the following logic is simple, it should be refined in future
         if self.isa == "x86_64":
             if processor.find("Intel") != -1:
-            # determine the microarchitecture code of intel processor by lscpu 'Model'
+                # determine the microarchitecture code of intel processor by lscpu 'Model'
                 model = self.connector.run_command("lscpu | grep 'Model:' | awk -F: '{print $2}'").strip()
                 try:
                     model = int(model)
@@ -305,7 +305,7 @@ class EventGroup:
             exit(-1)
         self.logger.debug(f"architecture model: {arch}")
         return arch
-    
+
     def get_event_groups_str(self) -> str:
         """
         Get the string of event groups, which can be accepted by '-e' options of 'perf'.
@@ -342,47 +342,47 @@ class HperfTemplete(Template):
 
 class Profiler:
     """
-    `Profiler` is responsible for collecting raw microarchitecture performance data. 
-    It will collect raw performance data by other profilers (such as perf, sar, etc.) on SUTs through `Connector`. 
+    `Profiler` is responsible for collecting raw microarchitecture performance data.
+    It will collect raw performance data by other profilers (such as perf, sar, etc.) on SUTs through `Connector`.
     """
     def __init__(self, connector: Connector, configs: dict, event_groups: EventGroup):
         """
         Constructor of `Profiler`
-        
+
         :param `connector`: an instance of `Connector` (`LocalConnector` or `RemoteConnector`)
         :param `configs`: a dict of parsed configurations by `Parser`
         :param `event_group`: an instance of 'EventGroup'
         """
         self.logger = logging.getLogger("hperf")
-        
+
         self.connector: Connector = connector
         self.configs: dict = configs
         self.event_groups: EventGroup = event_groups
 
     def profile(self):
         """
-        Generate and execute profiling script on SUT. 
-        
+        Generate and execute profiling script on SUT.
+
         :raises:
-            `ConnectorError`: for `RemoteConnector`, 
-            if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT. 
-            `ProfilerError`: if the returned code of executing script does not equal to 0. 
+            `ConnectorError`: for `RemoteConnector`,
+            if fail to generate or execute script on remote SUT, or fail to pull raw performance data from remote SUT.
+            `ProfilerError`: if the returned code of executing script does not equal to 0.
         """
         self.logger.info("get static information of SUT")
         self.get_cpu_info()
         self.get_cpu_topo()
-        
+
         # write down isa and arch in the test directory
         self.connector.run_command(f"echo {self.event_groups.isa} > {self.connector.test_dir}/isa")
         self.connector.run_command(f"echo {self.event_groups.arch} > {self.connector.test_dir}/arch")
-        
+
         perf_script = self.__get_perf_script()
         sar_script = self.__get_sar_script()
 
         self.logger.info("start profiling")
-        
+
         abnormal_flag = False
-        
+
         with ThreadPoolExecutor(max_workers=3) as executor:
             future_to_task = {
                 executor.submit(self.connector.run_script, perf_script, "perf.sh"): "perf",
@@ -392,7 +392,7 @@ class Profiler:
 
             for future in as_completed(future_to_task):
                 task = future_to_task[future]
-                try: 
+                try:
                     ret = future.result()
                 except Exception as e:
                     self.logger.error(f"task {task} generated an exception: {e}")
@@ -401,21 +401,21 @@ class Profiler:
                     if task != "workload" and ret != 0:
                         self.logger.error(f"profiler error: {task}")
                         abnormal_flag = True
-        
+
         if abnormal_flag:
             raise Exception("Executing profiling script on the SUT failed.")
-        
+
         self.logger.info("end profiling")
 
     def sanity_check(self) -> bool:
         """
         Check the environment on the SUT for profiling.
-        Since the collection of performance data requires exclusive usage of PMCs, 
-        it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running. 
-        Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC, 
+        Since the collection of performance data requires exclusive usage of PMCs,
+        it is necessary to check if there is any other profiler (such as VTune, perf, etc.) is already running.
+        Specifically, for x86_64 platform, the NMI watchdog will occupy a generic PMC,
         so that it will also be checked.
-        
-        :return: if the SUT passes the sanity check, it will return `True`, 
+
+        :return: if the SUT passes the sanity check, it will return `True`,
         else it will return `False` and record the information through `Logger`.
         :raises:
             `ConnectorError`: for `RemoteConnector`, if fail to execute command for sanity check on remote SUT.
@@ -425,9 +425,9 @@ class Profiler:
         # 1. check if there are any other profilers (e.g. VTune, perf, etc.) already running
         # TODO: add more pattern of profilers may interfere measurement
         process_check_list = [
-            "linux-tools/.*/perf", 
-            "/intel/oneapi/vtune/.*/emon"
-        ]    # process command pattern
+            "linux-tools/.*/perf",
+            "/intel/oneapi/vtune/.*/emon",
+        ]  # process command pattern
         for process in process_check_list:
             process_check_cmd = f"ps -ef | awk '{{print $8}}' | grep {process}"
             output = self.connector.run_command(process_check_cmd)    # may raise `ConnectorError`
@@ -444,13 +444,13 @@ class Profiler:
                 sanity_check_flag = False
 
         return sanity_check_flag
-    
+
     def get_cpu_info(self):
         """
         """
         output_dir = self.connector.test_dir
         self.connector.run_command("lscpu > " + f"{output_dir}/cpu_info")
-    
+
     def get_cpu_topo(self):
         """
         """
@@ -483,54 +483,54 @@ class Profiler:
             r"/proc/cpuinfo > " + f"{output_dir}/cpu_topo"
         else:
             raise Exception("Unsupported ISA.")
-        
+
         self.connector.run_command(get_topo_cmd)
-    
+
     def __get_perf_script(self) -> str:
         """
         Based on the parsed configuration, generate the string of shell script for profiling by perf.
-        
+
         :return: a string of shell script for profiling
         """
         perf_dir = self.connector.test_dir
-        
+
         perf_parameters = {
             "HPERF_PERF_DIR": perf_dir,
             "HPERF_EVENT_GROUPS_STR": self.event_groups.get_event_groups_str(),
             # "HPERF_COMMAND": self.configs["command"]
             "HPERF_PERF_TIME": self.configs["time"]
         }
-        
+
         with open("./tools/perf_template", mode="r", encoding="utf-8") as f:
             script = f.read()
-            
+
         perf_template = HperfTemplete(script)
-        
+
         script = perf_template.safe_substitute(perf_parameters)
 
         self.logger.debug("profiling script by perf: \n" + script)
         return script
-    
+
     def __get_sar_script(self) -> str:
         """
         Based on the parsed configuration, generate the string of shell script for profiling by sar.
         :return: a string of shell script for profiling
         """
         sar_dir = self.connector.test_dir
-        
+
         p_str = ""
-            
+
         sar_parameters = {
             "HPERF_SAR_DIR": sar_dir,
             "HPERF_P_STR": p_str,
             "HPERF_SAR_TIME": self.configs["time"]
         }
-        
+
         with open("./tools/sar_template", mode="r", encoding="utf-8") as f:
             script = f.read()
-            
+
         sar_template = HperfTemplete(script)
-        
+
         script = sar_template.safe_substitute(sar_parameters)
 
         self.logger.debug("profiling script by sar: \n" + script)
@@ -539,34 +539,34 @@ class Profiler:
 
 class Controller:
     """
-    `Controller` is responsible for the whole process control of hperf. 
-    Beside this, it also responsible for unified exception handling and logging. 
+    `Controller` is responsible for the whole process control of hperf.
+    Beside this, it also responsible for unified exception handling and logging.
     Users can conduct profiling for workload by calling `hperf()` method.
     """
 
     def __init__(self, argv: Sequence[str]):
         """
         Constructor of `Controller`.
-        
-        :param `argv`: Options and arguments passed from command line when invoke `hperf`. 
-        Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`). 
+
+        :param `argv`: Options and arguments passed from command line when invoke `hperf`.
+        Usually, it should be `sys.argv[1:]` (since `sys.argv[0]` is `hperf.py`).
         """
         self.configs = {}    # a dict contains parsed configurations for the following steps
-        
+
         parser = CollectorParser()
         argv_namespace: Namespace = parser.parse_args(argv)
-        
+
         # validate the options and arguments
-        # Note: if `ArgumentParser` detect `-h`/`--help` option, 
+        # Note: if `ArgumentParser` detect `-h`/`--help` option,
         # it will print the help message and raise a `SystemExit` exception to exit the program.
-        
+
         # check `-V`/`--version` option
         # if it is declared, print the version and exit
         if argv_namespace.version:
             with open("./VERSION") as f:
                 print(f.read())
             sys.exit(0)
-        
+
         # step 0. check verbosity and initialize `Logger`
         # Note: Since `Logger` follows singleton pattern,
         # it is unnecessary to pass the reference of the instance of `Logger` to other classes through their constructor.
@@ -576,7 +576,7 @@ class Controller:
         self.logger.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)-15s %(levelname)-8s %(message)s")
         # Logs will output to both console and file, log level: DEBUG < INFO < WARNING < ERROR < CRITICAL
-        
+
         # For console output of logs: > INFO (default), > DEBUG (if verbosity is declared)
         self.__handler_stream = logging.StreamHandler()
         self.__handler_stream.setFormatter(formatter)
@@ -585,13 +585,13 @@ class Controller:
         else:
             self.__handler_stream.setLevel(logging.INFO)    # logs with level above INFO will be printed to console by default
         self.logger.addHandler(self.__handler_stream)
-        
+
         # For file output of logs: always > DEBUG, not affected by `-v` option
         self.log_file_path = "/tmp/hperf/hperf.log"
         try:
             os.makedirs("/tmp/hperf/", exist_ok=True)
             self.__handler_file = logging.FileHandler(self.log_file_path, "w")
-        except Exception:
+        except Exception as e:
             print("Initialization failure.")
             sys.exit(-1)
         self.__handler_file.setLevel(logging.DEBUG)    # all logs will be written to the log file by default
@@ -609,7 +609,7 @@ class Controller:
         # step 2. temporary directory
         if argv_namespace.tmp_dir:
             self.configs["tmp_dir"] = argv_namespace.tmp_dir
-            
+
         # step 3. profiling time
         if argv_namespace.time:
             self.configs["time"] = argv_namespace.time
@@ -638,21 +638,21 @@ class Controller:
             self.__keyboard_interrupt_handler()
         except Exception as e:
             self.__exception_handler(e)
-        finally: 
+        finally:
             if self.connector:
                 self.__save_log_file()
 
     def __prework(self):
         """
-        Complete some preworks based on the valid configurations (`.configs`) before profiling. 
-        The following steps will be conducted based on the parsed configurations: 
+        Complete some preworks based on the valid configurations (`.configs`) before profiling.
+        The following steps will be conducted based on the parsed configurations:
         1) create an unique test directory in the temporary directory (`.tmp_dir`)
         2) instantiate a `LocalConnector` or `RemoteConnector` (`.connector`)
 
-        The temporary directory (`.configs["tmp_dir"]`) specified by command line options `--tmp-dir` (`/tmp/hperf/` by default). 
-        The test directory is for this run of hperf and used to save profiling scripts, raw performance data, analysis results, log file, etc. 
-        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which implement some useful methods for other modules 
-        to interact with SUT, where the former is for local SUT while the latter is for remote SUT. 
+        The temporary directory (`.configs["tmp_dir"]`) specified by command line options `--tmp-dir` (`/tmp/hperf/` by default).
+        The test directory is for this run of hperf and used to save profiling scripts, raw performance data, analysis results, log file, etc.
+        `LocalConnector` and `RemoteConnector` are extended from interface `Connector`, which implement some useful methods for other modules
+        to interact with SUT, where the former is for local SUT while the latter is for remote SUT.
 
         :raises:
             `ConnectorError`: For `RemoteConnector`, if fail to establish connection to remote SUT
@@ -685,9 +685,9 @@ class Controller:
                 os.makedirs("/tmp/hperf/", exist_ok=True)
                 # **Note**: this action will change the value of 'configs["tmp_dir"]'
                 self.tmp_dir = self.configs["tmp_dir"] = "/tmp/hperf/"
-        
+
         # find a unique test id (`.__find_test_id()`) and create test directory
-        # search the temporary directory (`.tmp_dir`) and get a string with an unique test id, 
+        # search the temporary directory (`.tmp_dir`) and get a string with an unique test id,
         # then create a sub-directory named by this string in the temporary directory for saving files and results.
         self.test_id = self.__find_test_id()
         os.makedirs(self.get_test_dir_path())
@@ -701,12 +701,12 @@ class Controller:
 
         e.g. In the temporary directory, there are many sub-directory named `<date>_test<id>` for different runs.
         If `20221206_test001` and `202211206_test002` are exist, it will return `202211206_test003`.
-        
+
         :return: a directory name with an unique test id for today
         """
         today = datetime.now().strftime("%Y%m%d")
         max_id = 0
-        pattern = f"{today}_test(\d+)"
+        pattern = rf"{today}_test(\d+)"
         for item in os.listdir(self.tmp_dir):
             path = os.path.join(self.tmp_dir, item)
             if os.path.isdir(path):
@@ -720,21 +720,21 @@ class Controller:
 
     def get_test_dir_path(self) -> str:
         """
-        Get the absolute path of the unique test directory for this test. 
+        Get the absolute path of the unique test directory for this test.
         :return: an absolute path of the unique test directory for this test
         """
         return os.path.join(self.tmp_dir, self.test_id)
 
     def __profile(self):
         """
-        Instantiate `EventGroup` (`.event_groups`) and `Profiler` (`.profiler`) based on the parsed configurations (`.configs`). 
-        Then it will call the methods of `Profiler`. The following steps will be conducted: 
-        1) run sanity check, 
-        2) generate and execute profiling script on SUT and save the raw performance data in the test directory 
-        (a sub-directory in the temporary directory which can be obtained by `.connector.get_test_dir_path()` method), 
+        Instantiate `EventGroup` (`.event_groups`) and `Profiler` (`.profiler`) based on the parsed configurations (`.configs`).
+        Then it will call the methods of `Profiler`. The following steps will be conducted:
+        1) run sanity check,
+        2) generate and execute profiling script on SUT and save the raw performance data in the test directory
+        (a sub-directory in the temporary directory which can be obtained by `.connector.get_test_dir_path()` method),
 
         :raises:
-            `SystemExit`: if user choose not to continue profiling when sanity check fails 
+            `SystemExit`: if user choose not to continue profiling when sanity check fails
             `ConnectorError`: if encounter errors when executing command or script on SUT
             `ProfilerError`: if the profiling is not successful on SUT
         """
@@ -761,9 +761,9 @@ class Controller:
 
     def __save_log_file(self):
         """
-        Copy the log file from `self.log_filed_path` to the test directory for this run. 
-        The `Logger` will temporarily write logs to this file (since `Logger` is instantiated before `Connector`) 
-        and copy to the test directory for the convenience of users. 
+        Copy the log file from `self.log_filed_path` to the test directory for this run.
+        The `Logger` will temporarily write logs to this file (since `Logger` is instantiated before `Connector`)
+        and copy to the test directory for the convenience of users.
         """
         source = self.log_file_path
         target = os.path.join(self.get_test_dir_path(), "hperf.log")
@@ -775,13 +775,13 @@ class Controller:
         else:
             self.logger.info(f"logs for this run are saved in {target}")
 
-    # Following methods are responsible for exception handling ... 
-    
+    # Following methods are responsible for exception handling ...
+
     def __system_exit_handler(self, e: SystemExit):
         """
         Handle all possible `SystemExit` exceptions during the whole process of hperf.
-        `SystemExit` is triggered by `sys.exit(code)` statement, 
-        where `code == 0` represents the program exits normally. 
+        `SystemExit` is triggered by `sys.exit(code)` statement,
+        where `code == 0` represents the program exits normally.
         """
         if e.args[0] == 0:
             self.logger.debug("Program exits normally.")
@@ -790,17 +790,17 @@ class Controller:
 
     def __keyboard_interrupt_handler(self):
         """
-        Handle all possible `KeyboardInterrupt` exceptions during the whole process of hperf. 
-        `KeyboardInterrupt` is triggered by `Ctrl + C` in terminal. 
+        Handle all possible `KeyboardInterrupt` exceptions during the whole process of hperf.
+        `KeyboardInterrupt` is triggered by `Ctrl + C` in terminal.
         """
         self.logger.error("Keyboard Interrupt.")
-    
+
     def __exception_handler(self, e: Exception):
         """
-        Handle all possible Exceptions (Errors) during the whole process of hperf. 
-        When an error is caught, the following code will not be executed and finally the program exits. 
-        So that this method is to print error message and do some cleaning works. 
-        `Exception` has an attribute `args` where `args[0]` is the message. 
+        Handle all possible Exceptions (Errors) during the whole process of hperf.
+        When an error is caught, the following code will not be executed and finally the program exits.
+        So that this method is to print error message and do some cleaning works.
+        `Exception` has an attribute `args` where `args[0]` is the message.
         """
         self.logger.error(f"{e.args[0]}")
 
