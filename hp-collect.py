@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import sys
@@ -590,6 +591,12 @@ class Controller:
         self.log_file_path = "/tmp/hperf/hperf.log"
         try:
             os.makedirs("/tmp/hperf/", exist_ok=True)
+
+            atexit.register(
+                lambda x: os.remove(x) if os.path.exists(x) else None,
+                self.log_file_path,
+            )
+
             self.__handler_file = logging.FileHandler(self.log_file_path, "w")
         except Exception as e:
             print("Initialization failure.")
