@@ -86,9 +86,9 @@ const csvToJsMapping: Record<string, keyof TimeSeriesData> = {
   "ITLB MPKI": "itlbMpki",
   "DTLB MPKI": "dtlbMpki",
   "DTLB WALK RATE": "dtlbWalkRate",
-  USER: "user",
+  "CPU_UTIL_USER": "user",
   NICE: "nice",
-  SYSTEM: "system",
+  "CPU_UTIL_SYS": "system",
   IOWAIT: "iowait",
   STEAL: "steal",
   IDLE: "idle",
@@ -145,6 +145,17 @@ function parseMetrics(rawData: string): TimeSeriesData[] {
       obj.cpuUtilization *= 100;
       // ns to ms
       obj.wallClockTime /= 1e6;
+      // byte to bit
+      obj.memBandwidthRd *= 8;
+      obj.memBandwidthWr *= 8;
+      obj.memBandwidth *= 8;
+
+      for (const key of validKeys) {
+        if (obj[key] === undefined) {
+          obj[key] = 0.0;
+          console.warn(`Key ${key} is missing in the data`);
+        }
+      }
 
       return obj;
     })

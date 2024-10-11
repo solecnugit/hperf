@@ -67,34 +67,13 @@ event_groups = [
 ]
 
 metrics = [
-    {
-        "metric": "CPU UTILIZATION",
-        "expression": "e22 / e10"
-    },
-    {
-        "metric": "FREQUENCY",
-        "expression": "e20 / (e1 / 1000000000)"
-    },
-    {
-        "metric": "CPI",
-        "expression": "e20 / e21"
-    },
-    {
-        "metric": "L1 CACHE MPKI",
-        "expression": "(1000 * e30) / e21"
-    },
-    {
-        "metric": "L2 CACHE MPKI",
-        "expression": "(1000 * e31) / e21"
-    },
-    {
-        "metric": "L3 CACHE MPKI",
-        "expression": "(1000 * e32) / e21"
-    },
-    {
-        "metric": "BRANCH MISS RATE",
-        "expression": "e34 / e33"
-    }
+    {"metric": "CPU UTILIZATION", "expression": "e22 / e10"},
+    {"metric": "FREQUENCY", "expression": "e20 / (e1 / 1000000000)"},
+    {"metric": "CPI", "expression": "e20 / e21"},
+    {"metric": "L1 CACHE MPKI", "expression": "(1000 * e30) / e21"},
+    {"metric": "L2 CACHE MPKI", "expression": "(1000 * e31) / e21"},
+    {"metric": "L3 CACHE MPKI", "expression": "(1000 * e32) / e21"},
+    {"metric": "BRANCH MISS RATE", "expression": "e34 / e33"},
 ]
 
 available_GP = 4
