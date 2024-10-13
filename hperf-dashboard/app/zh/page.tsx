@@ -217,7 +217,7 @@ export default function Home() {
       const cardComponent = factories[card.type](card);
 
       return (
-        <div key={card.id} onDoubleClick={removeCard(card.id)}>
+        <div key={card.id} onDoubleClick={removeCard(card.id)} className="select-none">
           {cardComponent}
         </div>
       );
@@ -278,6 +278,18 @@ export default function Home() {
       newCardLayout.minW = 3;
     }
 
+    if (cardType == "barplot") {
+      if (["l1CacheMissRate", "l2CacheMissRate", "llCacheMissRate"].indexOf(metricName) != -1) {
+        // @ts-ignore
+        newCard["valueFormatter"] = "percentage";
+      }
+
+      if (["memBandwidth", "memBandwidthRd", "memBandwidthWr"].indexOf(metricName) != -1) {
+        // @ts-ignore
+        newCard["valueFormatter"] = "bandwidth";
+      }
+    }
+
     if (cardType == "radialplot") {
       // @ts-ignore
       newCard["radialColorStyle"] = getColorFrom(metricName);
@@ -293,9 +305,9 @@ export default function Home() {
     }
 
     if (cardType == "cpuInfo") {
-      newCardLayout.h = 4;
+      newCardLayout.h = 2;
       newCardLayout.w = 3;
-      newCardLayout.minH = 2;
+      newCardLayout.minH = 1;
       newCardLayout.minW = 3;
       // @ts-ignore
       newCard["infoType"] = metricName;

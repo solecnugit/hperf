@@ -36,12 +36,6 @@ function InfoForType({
           <li>
             {t("cpus")}:{cpuInfo.cpus}
           </li>
-          <li>
-            {t("cores")}:{cpuInfo.coresPerSocket}
-          </li>
-          <li>
-            {t("threads")}:{cpuInfo.threadsPerCore}
-          </li>
         </ul>
       );
     case "frequency":

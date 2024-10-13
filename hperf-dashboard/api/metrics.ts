@@ -149,6 +149,10 @@ function parseMetrics(rawData: string): TimeSeriesData[] {
       obj.memBandwidthRd *= 8;
       obj.memBandwidthWr *= 8;
       obj.memBandwidth *= 8;
+      obj.l1CacheMissRate *= 100;
+      obj.l2CacheMissRate *= 100;
+      obj.llCacheMissRate *= 100;
+      obj.branchMissRate *= 100;
 
       for (const key of validKeys) {
         if (obj[key] === undefined) {

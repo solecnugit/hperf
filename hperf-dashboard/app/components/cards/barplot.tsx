@@ -12,18 +12,20 @@ import { ChartContainer } from "@/components/ui/chart";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { BarChart, Bar, Rectangle, XAxis } from "recharts";
-import { autoFormat } from "./utils";
+import { autoFormat, formatBandwidth } from "./utils";
 
 export default function BarplotCard({
   metricName,
   unit = "",
   metrics,
   barColorStyle = "hsl(var(--chart-2))",
+  valueFormatter
 }: {
   metrics: TimeSeriesData[];
   metricName: string;
   unit?: string;
   barColorStyle?: string;
+    valueFormatter?: "bandwidth" | "percentage";
 }) {
   const t = useTranslations("cards");
 
@@ -39,6 +41,14 @@ export default function BarplotCard({
   }, [metrics]);
 
   const value = useMemo(() => {
+    if (valueFormatter && valueFormatter === "bandwidth") {
+      return formatBandwidth(lastMetric);
+    }
+
+    if (valueFormatter && valueFormatter === "percentage") {
+      return lastMetric.toFixed(2) + "%";
+    }
+
     return autoFormat(lastMetric);
   }, [lastMetric]);
 
