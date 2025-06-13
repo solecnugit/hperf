@@ -1,3 +1,5 @@
+> [!NOTE]
+> The data and scripts for paper "Fragmentation Harmonization for the Arm Ecosystem: A Unified Method to Measure Memory Bandwidth via Network-on-Chip" can be found in [https://github.com/solecnugit/paper-arm-mem-bw](https://github.com/solecnugit/paper-arm-mem-bw). 
 # hperf
 
 hperf (Hierarchical Performance Profiling Tools) is a microarchitectural performance data collection tool across platforms on Linux operating system that can be used to characterize workloads at the microarchitectural level with features such as
